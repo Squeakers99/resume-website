@@ -17,3 +17,18 @@ export async function getProjects(): Promise<Project[]> {
 
   return res.json();
 }
+
+export async function getBackendStatus(): Promise<"connected" | "disconnected"> {
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!base) return "disconnected";
+
+  try {
+    const res = await fetch(`${base}/health`, { cache: "no-store" });
+    if (!res.ok) return "disconnected";
+
+    const body = (await res.json()) as { ok?: boolean };
+    return body.ok ? "connected" : "disconnected";
+  } catch {
+    return "disconnected";
+  }
+}

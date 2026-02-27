@@ -1,13 +1,20 @@
+import { getBackendStatus } from "@/lib/api";
 import "./homepage.css";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const backendStatus = await getBackendStatus();
+  const isConnected = backendStatus === "connected";
+
   return (
     <main className="landing-shell">
-      <div aria-label="Homepage section">
+      <section className="homepage-panel" aria-label="Homepage section">
         <div className="homepage-grid">
           <div className="homepage-copy">
             <p className="homepage-intro">Hi, I&apos;m Soheil Rajabali</p>
             <h1>Mechatronics Engineer &amp; Software Developer</h1>
+            <p className="homepage-summary">
+              I design and build reliable systems across robotics, automation, and software.
+            </p>
             <p className="homepage-tags">Robotics - Automation - AI Systems - Full-Stack</p>
 
             <div className="homepage-actions">
@@ -31,14 +38,17 @@ export default function HomePage() {
           </div>
         </div>
 
-        <footer className="status-bar" aria-label="Current focus areas">
+        <footer className="status-bar" aria-label="Backend connection status">
           <span>
-            System Status: <strong>Online</strong>
+            Backend Status:{" "}
+            <strong className={isConnected ? "status-online" : "status-offline"}>
+              {isConnected ? "Connected" : "Disconnected"}
+            </strong>
           </span>
           <span>Robotics</span>
           <span>CAD Design</span>
         </footer>
-      </div>
+      </section>
     </main>
   );
 }
