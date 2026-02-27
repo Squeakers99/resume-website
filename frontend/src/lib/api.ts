@@ -32,3 +32,21 @@ export async function getBackendStatus(): Promise<"connected" | "disconnected"> 
     return "disconnected";
   }
 }
+
+export async function incrementAndGetSiteViews(): Promise<number> {
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!base) return 0;
+
+  try {
+    const res = await fetch(`${base}/api/metrics/views/increment`, {
+      method: "POST",
+      cache: "no-store",
+    });
+    if (!res.ok) return 0;
+
+    const body = (await res.json()) as { views?: number };
+    return typeof body.views === "number" ? body.views : 0;
+  } catch {
+    return 0;
+  }
+}

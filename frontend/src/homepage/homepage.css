@@ -1,19 +1,21 @@
 .landing-shell {
-  min-height: 100vh;
+  min-height: calc(100dvh - 160px);
   width: 100%;
-  padding: clamp(1.25rem, 3.5vw, 2.5rem);
+  padding: 0 0.75rem;
+  display: grid;
+  place-items: center;
 }
 
 .homepage-panel {
-  width: 100%;
-  margin: 0;
-  padding: clamp(1.25rem, 3.5vw, 2.75rem);
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem;
 }
 
 .homepage-grid {
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
-  gap: clamp(1.2rem, 3vw, 2.2rem);
+  gap: clamp(0.6rem, 1.6vw, 1rem);
   align-items: center;
 }
 
@@ -109,49 +111,10 @@
   object-position: center 30%;
 }
 
-.status-bar {
-  margin-top: 2.4rem;
-  border: 1px solid rgba(103, 188, 255, 0.2);
-  background: rgba(10, 22, 41, 0.45);
-  border-radius: 10px;
-  padding: 0.8rem 1rem;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-  align-items: center;
-  text-align: center;
-  color: #bbd6fb;
-  font-size: 0.88rem;
-  letter-spacing: 0.02em;
-}
-
-.status-bar > span {
-  position: relative;
-}
-
-.status-bar > span:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  right: -0.4rem;
-  top: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  transform: translateY(-50%);
-  background: rgba(187, 214, 251, 0.6);
-}
-
-.status-online {
-  color: #8de9b6;
-}
-
-.status-offline {
-  color: #ffb5b5;
-}
-
 @media (max-width: 900px) {
   .homepage-grid {
     grid-template-columns: 1fr;
+    gap: 0.9rem;
   }
 
   .homepage-copy h1 {
@@ -166,13 +129,5 @@
 @media (max-width: 620px) {
   .btn {
     width: 100%;
-  }
-
-  .status-bar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .status-bar > span::after {
-    display: none;
   }
 }
