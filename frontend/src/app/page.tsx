@@ -1,65 +1,66 @@
-import Image from "next/image";
+﻿import Image from "next/image";
+
+const navItems = ["Home", "About Me", "Projects", "Contact", "Resume"];
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="landing-shell">
+      <section className="hero-card" aria-label="Homepage hero section">
+        <p className="hero-index">01. Homepage / Hero</p>
+
+        <header className="hero-header">
+          <div className="brand">
+            <span className="brand-dot" aria-hidden="true" />
+            <span className="brand-name">JOHN DOE</span>
+          </div>
+
+          <nav aria-label="Main navigation">
+            <ul className="nav-list">
+              {navItems.map((item) => (
+                <li key={item}>
+                  <a href="#">{item}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </header>
+
+        <div className="hero-grid">
+          <div className="hero-copy">
+            <p className="hero-intro">Hi, I&apos;m John Doe</p>
+            <h1>Mechatronics Engineer &amp; Software Developer</h1>
+            <p className="hero-tags">Robotics · Automation · AI Systems · Full-Stack</p>
+
+            <div className="hero-actions">
+              <a className="btn btn-primary" href="#projects">
+                View Projects
+              </a>
+              <a className="btn btn-secondary" href="#resume">
+                Download Resume
+              </a>
+            </div>
+          </div>
+
+          <div className="hero-visual" role="presentation">
+            <div className="portrait-frame">
+              <Image
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=640&q=80"
+                alt="Portrait of John Doe"
+                width={330}
+                height={360}
+                priority
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        <footer className="status-bar" aria-label="Current focus areas">
+          <span>System Status: <strong>Online</strong></span>
+          <span>Robotics</span>
+          <span>CAD Design</span>
+        </footer>
+      </section>
+    </main>
   );
 }
+
