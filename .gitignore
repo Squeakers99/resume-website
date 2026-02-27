@@ -1,0 +1,55 @@
+# ------------------------------
+# Node / Package Managers
+# ------------------------------
+node_modules/
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+
+# ------------------------------
+# Build Output
+# ------------------------------
+.next/
+dist/
+build/
+out/
+
+# ------------------------------
+# Environment Variables (CRITICAL)
+# ------------------------------
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# ------------------------------
+# Prisma
+# ------------------------------
+prisma/dev.db
+prisma/dev.db-journal
+
+# ------------------------------
+# Logs
+# ------------------------------
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ------------------------------
+# OS Files
+# ------------------------------
+.DS_Store
+Thumbs.db
+
+# ------------------------------
+# IDE
+# ------------------------------
+.vscode/
+.idea/
+
+# ------------------------------
+# Coverage
+# ------------------------------
+coverage/
