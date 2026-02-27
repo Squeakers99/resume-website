@@ -5,9 +5,7 @@ const navItems = ["Home", "About Me", "Projects", "Contact", "Resume"];
 export default function Home() {
   return (
     <main className="landing-shell">
-      <section className="hero-card" aria-label="Homepage hero section">
-        <p className="hero-index">01. Homepage / Hero</p>
-
+      <div aria-label="Homepage hero section">
         <header className="hero-header">
           <div className="brand">
             <span className="brand-dot" aria-hidden="true" />
@@ -59,7 +57,7 @@ export default function Home() {
           <span>Robotics</span>
           <span>CAD Design</span>
         </footer>
-      </section>
+      </div>
     </main>
   );
 }
