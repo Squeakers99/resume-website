@@ -1,5 +1,6 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "John Doe | Portfolio",
-  description: "Portfolio website for John Doe, mechatronics engineer and software developer.",
+  title: "Soheil Rajabali | Portfolio",
+  description: "Portfolio website for Soheil Rajabali, mechatronics engineer and software developer.",
 };
 
 export default function RootLayout({
@@ -24,12 +25,29 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <header className="site-header" aria-label="Primary site navigation">
+          <div className="site-header-inner">
+            <div className="brand">
+              <img className="brand-logo" src="/logo.png" alt="Soheil Rajabali logo" />
+              <span className="brand-name">SOHEIL RAJABALI</span>
+            </div>
+
+            <nav aria-label="Main navigation">
+              <ul className="nav-list">
+                <li>
+                  <Link href="/">Home</Link>
+                </li>
+                <li>
+                  <Link href="/projects">Projects</Link>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </header>
+
+        <div className="site-main">{children}</div>
       </body>
     </html>
   );
 }
-
