@@ -3,7 +3,7 @@ import { execSync } from "node:child_process";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { FaCodeBranch, FaGithub, FaInstagram, FaLinkedinIn } from "react-icons/fa";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { getBackendStatus } from "@/lib/api";
 import "./globals.css";
@@ -103,49 +103,21 @@ async function getGitMeta() {
   }
 }
 
-async function incrementAndGetVercelViews(): Promise<number | null> {
-  const url = process.env.KV_REST_API_URL?.trim();
-  const token = process.env.KV_REST_API_TOKEN?.trim();
-  if (!url || !token) return null;
-
-  try {
-    const res = await fetch(`${url}/incr/site_views`, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) return null;
-    const body = (await res.json()) as { result?: number | string };
-    const raw = body.result;
-    const views = typeof raw === "string" ? Number.parseInt(raw, 10) : raw;
-    return typeof views === "number" && Number.isFinite(views) ? views : null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [backendStatus, gitMeta, views] = await Promise.all([
+  const [backendStatus, gitMeta] = await Promise.all([
     getBackendStatus(),
     getGitMeta(),
-    incrementAndGetVercelViews(),
+    
   ]);
   const isConnected = backendStatus === "connected";
   const year = new Date().getFullYear();
   const formattedCommits =
     typeof gitMeta.commitCount === "number"
       ? new Intl.NumberFormat("en-US").format(gitMeta.commitCount)
-      : "--";
-  const formattedViews =
-    typeof views === "number"
-      ? new Intl.NumberFormat("en-US").format(views)
       : "--";
 
   return (
@@ -186,7 +158,7 @@ export default async function RootLayout({
             </span>
             <span className="footer-item">&#169; {year} Soheil Rajabali</span>
             <span className="footer-item">Commits: {formattedCommits}</span>
-            <span className="footer-item">Views: {formattedViews}</span>
+            <span className="footer-item">Views: <Analytics /></span>
             <span className={`footer-item footer-status ${isConnected ? "footer-status-online" : "footer-status-offline"}`}>
               <span className="status-dot"/>
               {isConnected ? "Systems Operational" : "Systems Down"}
