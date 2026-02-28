@@ -22,20 +22,60 @@ export const metadata: Metadata = {
   description: "Portfolio website for Soheil Rajabali, mechatronics engineer and software developer.",
 };
 
-function getGitMeta() {
+async function getCommitCountFromGitHub(owner: string, repo: string, ref: string): Promise<number | null> {
   try {
-    const branchCode = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+    const githubToken = process.env.GITHUB_TOKEN?.trim();
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?sha=${encodeURIComponent(ref)}&per_page=1`, {
+      next: { revalidate: 3600 },
+      headers: {
+        Accept: "application/vnd.github+json",
+        ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
+      },
+    });
+
+    if (!res.ok) return null;
+
+    const linkHeader = res.headers.get("link");
+    if (linkHeader) {
+      const match = linkHeader.match(/[?&]page=(\d+)>;\s*rel="last"/);
+      if (match) {
+        const pages = Number.parseInt(match[1], 10);
+        return Number.isFinite(pages) ? pages : null;
+      }
+    }
+
+    const commits = (await res.json()) as Array<unknown>;
+    return Array.isArray(commits) ? commits.length : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getGitMeta() {
+  const vercelSha = process.env.VERCEL_GIT_COMMIT_SHA?.trim();
+  const vercelRef = process.env.VERCEL_GIT_COMMIT_REF?.trim();
+  const vercelOwner = process.env.VERCEL_GIT_REPO_OWNER?.trim();
+  const vercelRepo = process.env.VERCEL_GIT_REPO_SLUG?.trim();
+
+  try {
+    const branchCode = vercelSha?.slice(0, 7) || execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
     const commitCountRaw = execSync("git rev-list --count HEAD", { encoding: "utf8" }).trim();
     const commitCount = Number.parseInt(commitCountRaw, 10);
 
     return {
       branchCode: branchCode || "N/A",
-      commitCount: Number.isFinite(commitCount) ? commitCount : 0,
+      commitCount: Number.isFinite(commitCount) ? commitCount : null,
     };
   } catch {
+    const fallbackBranch = vercelSha?.slice(0, 7) || vercelRef || "N/A";
+    const fallbackCount =
+      vercelOwner && vercelRepo && vercelRef
+        ? await getCommitCountFromGitHub(vercelOwner, vercelRepo, vercelRef)
+        : null;
+
     return {
-      branchCode: "N/A",
-      commitCount: 0,
+      branchCode: fallbackBranch,
+      commitCount: fallbackCount,
     };
   }
 }
@@ -47,11 +87,14 @@ export default async function RootLayout({
 }>) {
   const [backendStatus, gitMeta] = await Promise.all([
     getBackendStatus(),
-    Promise.resolve(getGitMeta()),
+    getGitMeta(),
   ]);
   const isConnected = backendStatus === "connected";
   const year = new Date().getFullYear();
-  const formattedCommits = new Intl.NumberFormat("en-US").format(gitMeta.commitCount);
+  const formattedCommits =
+    typeof gitMeta.commitCount === "number"
+      ? new Intl.NumberFormat("en-US").format(gitMeta.commitCount)
+      : "--";
 
   return (
     <html lang="en">
@@ -60,7 +103,7 @@ export default async function RootLayout({
           <div className="site-header-inner">
             <div className="brand">
               <span className="brand-logo-shell">
-                <img className="brand-logo" src="/logo.png" alt="Soheil Rajabali logo" />
+                <img className="brand-logo" src="/Logo.png" alt="Soheil Rajabali logo" />
               </span>
               <span className="brand-name">SOHEIL RAJABALI</span>
             </div>
