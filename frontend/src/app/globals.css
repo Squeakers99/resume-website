@@ -24,6 +24,7 @@
   --footer-bg: rgba(6, 12, 28, 0.86);
   --footer-text: #bbd6fb;
   --footer-link: #d7e9ff;
+  --socials-hover: #5aa6e6;
   --status-online: #8de9b6;
   --status-offline: #ffb5b5;
   --theme-active-text: #091427;
@@ -47,6 +48,7 @@
   --footer-bg: rgba(7, 24, 18, 0.88);
   --footer-text: #c7eddb;
   --footer-link: #e6fff4;
+  --socials-hover: #6fcfa3;
   --status-online: #9bf3c7;
   --status-offline: #ffc2c2;
   --theme-active-text: #08190f;
@@ -70,6 +72,7 @@
   --footer-bg: rgba(32, 16, 26, 0.88);
   --footer-text: #ffd7e7;
   --footer-link: #fff0f6;
+  --socials-hover: #e88f72;
   --status-online: #b9f8d8;
   --status-offline: #ffd0d0;
   --theme-active-text: #2a1220;
@@ -93,6 +96,7 @@
   --footer-bg: rgba(255, 255, 255, 0.94);
   --footer-text: #29446d;
   --footer-link: #1f3d66;
+  --socials-hover: #3f7ad3;
   --status-online: #1f8a47;
   --status-offline: #b83f3f;
   --theme-active-text: #f7fbff;
@@ -116,6 +120,7 @@
   --footer-bg: rgba(51, 29, 0, 0.9);
   --footer-text: #ffd98a;
   --footer-link: #fff0c8;
+  --socials-hover: #e6c244;
   --status-online: #7efab2;
   --status-offline: #ff9696;
   --theme-active-text: #2a1900;
@@ -245,7 +250,7 @@ body *::after {
 }
 
 .footer-socials a:hover {
-  color: #ffffff;
+  color: var(--socials-hover);
 }
 
 .footer-theme {
