@@ -30,6 +30,26 @@
   letter-spacing: 0.02em;
 }
 
+.typewriter-name {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+
+.typewriter-text {
+  --type-duration: 2.7s;
+  display: inline-block;
+  max-width: 0;
+  padding-right: 0.16em;
+  border-right: 0.62em solid currentColor;
+  overflow: hidden;
+  white-space: nowrap;
+  animation:
+    name-type var(--type-duration) steps(22, end) 1 forwards,
+    caret-blink 1s steps(1, end) var(--type-duration) infinite;
+}
+
 .homepage-copy h1 {
   margin: 0.45rem 0 0;
   max-width: 22ch;
@@ -145,5 +165,27 @@
 @media (max-width: 620px) {
   .btn {
     width: 100%;
+  }
+}
+
+@keyframes name-type {
+  from {
+    max-width: 0;
+  }
+
+  to {
+    max-width: 100%;
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    border-right-color: currentColor;
+  }
+
+  50%,
+  100% {
+    border-right-color: transparent;
   }
 }

@@ -6,7 +6,11 @@ export default function HomePage() {
       <section className="homepage-panel" aria-label="Homepage section">
         <div className="homepage-grid">
           <div className="homepage-copy">
-            <p className="homepage-intro">Hi, I&apos;m Soheil Rajabali</p>
+            <p className="homepage-intro">
+              <span className="typewriter-name" aria-label="Hi, I'm Soheil Rajabali">
+                <span className="typewriter-text">Hi, I&apos;m Soheil Rajabali</span>
+              </span>
+            </p>
             <h1>Mechatronics Engineer &amp; Software Developer</h1>
             <p className="homepage-summary">
               I design and build reliable systems across robotics, automation, and software.
