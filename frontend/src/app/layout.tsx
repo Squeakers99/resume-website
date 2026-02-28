@@ -7,6 +7,9 @@ import ThemeToggle from "@/app/components/ThemeToggle";
 import { getBackendStatus } from "@/lib/api";
 import "./globals.css";
 
+const description = 
+  "Hi, I'm Soheil Rajabali. This is my portfolio website where I share my projects and experience in mechatronics engineering and software development.";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -17,9 +20,61 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://soheilrajabali.dev";
+
 export const metadata: Metadata = {
-  title: "Soheil Rajabali | Portfolio",
-  description: "Portfolio website for Soheil Rajabali, mechatronics engineer and software developer.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Soheil Rajabali | Mechatronics Engineer and Software Developer",
+    template: "%s | Soheil Rajabali",
+  },
+  description:
+    description,
+  keywords: [
+    "Soheil Rajabali",
+    "Soheil",
+    "Soheil Rajabali portfolio",
+    "Mechatronics Engineer",
+    "Soheil Rajabali U of A",
+    "Soheil Rajabali Robotics",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    title: "Soheil Rajabali | Mechatronics Engineer and Software Developer",
+    description:
+      description,
+    siteName: "Soheil Rajabali Portfolio",
+    images: [
+      {
+        url: "/Logo.png",
+        width: 1200,
+        height: 630,
+        alt: "Soheil Rajabali portfolio logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Soheil Rajabali | Mechatronics Engineer and Software Developer",
+    description:
+      description,
+    images: ["/Logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 async function getCommitCountFromGitHub(owner: string, repo: string, branch: string): Promise<number | null> {
@@ -117,10 +172,37 @@ export default async function RootLayout({
     typeof gitMeta.commitCount === "number"
       ? new Intl.NumberFormat("en-US").format(gitMeta.commitCount)
       : "--";
+  const personStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "Soheil Rajabali",
+    url: siteUrl,
+    image: `${siteUrl}/Logo.png`,
+    jobTitle: "Mechatronics Engineer and Software Developer",
+    sameAs: [
+      "https://github.com/Squeakers99",
+      "https://www.linkedin.com/in/soheilrajabali/",
+      "https://www.instagram.com/soheil.rajabali/",
+    ],
+  };
+  const siteStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Soheil Rajabali Portfolio",
+    url: siteUrl,
+  };
 
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(personStructuredData) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
+        />
         <header className="site-header" aria-label="Primary site navigation">
           <div className="site-header-inner">
             <div className="brand">
