@@ -13,7 +13,7 @@ export default function HomePage() {
             </p>
             <h1>Mechatronics Engineer &amp; Software Developer</h1>
             <p className="homepage-summary">
-              I design and build reliable systems across robotics, automation, and software.
+              I design and build mechanical, electrical, and software systems.
             </p>
             <p className="homepage-tags">Robotics - Automation - AI Systems - Full-Stack</p>
 

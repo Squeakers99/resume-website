@@ -3,7 +3,6 @@ import { execSync } from "node:child_process";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { FaCodeBranch, FaGithub, FaInstagram, FaLinkedinIn } from "react-icons/fa";
-import { Analytics } from "@vercel/analytics/next";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { getBackendStatus } from "@/lib/api";
 import "./globals.css";
@@ -111,7 +110,6 @@ export default async function RootLayout({
   const [backendStatus, gitMeta] = await Promise.all([
     getBackendStatus(),
     getGitMeta(),
-    
   ]);
   const isConnected = backendStatus === "connected";
   const year = new Date().getFullYear();
@@ -158,7 +156,6 @@ export default async function RootLayout({
             </span>
             <span className="footer-item">&#169; {year} Soheil Rajabali</span>
             <span className="footer-item">Commits: {formattedCommits}</span>
-            <span className="footer-item">Views: <Analytics /></span>
             <span className={`footer-item footer-status ${isConnected ? "footer-status-online" : "footer-status-offline"}`}>
               <span className="status-dot"/>
               {isConnected ? "Systems Operational" : "Systems Down"}
@@ -176,7 +173,6 @@ export default async function RootLayout({
             </div>
           </div>
         </footer>
-        <Analytics />
       </body>
     </html>
   );
