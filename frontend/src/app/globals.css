@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
+/* ------------------------------------------ */
+/* --------- Custom Global Styles ------------*/
+/* ------------------------------------------ */
+
 :root {
+  --theme-transition-duration: 320ms;
+  --theme-transition-ease: ease;
   --bg-0: #050916;
   --bg-1: #0d1730;
   --card: #081225;
@@ -20,6 +26,7 @@
   --footer-link: #d7e9ff;
   --status-online: #8de9b6;
   --status-offline: #ffb5b5;
+  --theme-active-text: #091427;
 }
 
 [data-theme="slate"] {
@@ -42,6 +49,7 @@
   --footer-link: #edf2ff;
   --status-online: #9ef0c4;
   --status-offline: #ffc2c2;
+  --theme-active-text: #0d1526;
 }
 
 [data-theme="forest"] {
@@ -64,6 +72,7 @@
   --footer-link: #e6fff4;
   --status-online: #9bf3c7;
   --status-offline: #ffc2c2;
+  --theme-active-text: #08190f;
 }
 
 [data-theme="sunset"] {
@@ -86,6 +95,53 @@
   --footer-link: #fff0f6;
   --status-online: #b9f8d8;
   --status-offline: #ffd0d0;
+  --theme-active-text: #2a1220;
+}
+
+[data-theme="light"] {
+  --bg-0: #eef4ff;
+  --bg-1: #dce8ff;
+  --card: #ffffff;
+  --card-edge: #a9c2ee;
+  --text-main: #1b2b45;
+  --text-muted: #476289;
+  --accent: #4f8ef7;
+  --accent-2: #2f69d5;
+  --chip: #e6efff;
+  --glow-1: rgba(79, 142, 247, 0.18);
+  --glow-2: rgba(47, 105, 213, 0.14);
+  --header-line: rgba(47, 105, 213, 0.25);
+  --header-bg: rgba(240, 246, 255, 0.9);
+  --footer-line: rgba(47, 105, 213, 0.22);
+  --footer-bg: rgba(255, 255, 255, 0.92);
+  --footer-text: #23406b;
+  --footer-link: #1c3b66;
+  --status-online: #21884a;
+  --status-offline: #b73a3a;
+  --theme-active-text: #f8fbff;
+}
+
+[data-theme="dark"] {
+  --bg-0: #07080d;
+  --bg-1: #151824;
+  --card: #0f1320;
+  --card-edge: #2b344f;
+  --text-main: #e7eeff;
+  --text-muted: #96a3c3;
+  --accent: #9fb2ff;
+  --accent-2: #6e84dc;
+  --chip: #171d31;
+  --glow-1: rgba(115, 141, 240, 0.16);
+  --glow-2: rgba(84, 108, 204, 0.2);
+  --header-line: rgba(159, 178, 255, 0.24);
+  --header-bg: rgba(7, 8, 13, 0.84);
+  --footer-line: rgba(159, 178, 255, 0.2);
+  --footer-bg: rgba(11, 13, 22, 0.9);
+  --footer-text: #c8d5f5;
+  --footer-link: #dfe8ff;
+  --status-online: #8fe7af;
+  --status-offline: #ffb1b1;
+  --theme-active-text: #0a1020;
 }
 
 * {
@@ -104,6 +160,28 @@ body {
     radial-gradient(circle at 90% 10%, var(--glow-2), transparent 40%),
     linear-gradient(140deg, var(--bg-0), var(--bg-1));
 }
+
+/* ------------------------------------------ */
+/* ----------- Theme Transition ------------- */
+/* ------------------------------------------ */
+
+body,
+body *,
+body *::before,
+body *::after {
+  transition:
+    background-color var(--theme-transition-duration) var(--theme-transition-ease),
+    background var(--theme-transition-duration) var(--theme-transition-ease),
+    color var(--theme-transition-duration) var(--theme-transition-ease),
+    border-color var(--theme-transition-duration) var(--theme-transition-ease),
+    box-shadow var(--theme-transition-duration) var(--theme-transition-ease),
+    fill var(--theme-transition-duration) var(--theme-transition-ease),
+    stroke var(--theme-transition-duration) var(--theme-transition-ease);
+}
+
+/* -------------------------------------------- */
+/* ------------- Header Styling ---------------*/
+/* ------------------------------------------ */
 
 .site-header {
   position: sticky;
@@ -130,6 +208,10 @@ body {
   display: flex;
 }
 
+/* -------------------------------------------- */
+/* ------------- Footer Styling ---------------*/
+/* ------------------------------------------ */
+
 .site-footer {
   width: 100%;
   padding: 0.5rem 0.75rem 0.75rem;
@@ -144,6 +226,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 0.9rem;
   color: var(--footer-text);
   font-size: 0.95rem;
@@ -155,19 +238,23 @@ body {
   white-space: nowrap;
 }
 
+.footer-status {
+  color: var(--footer-text);
+}
+
 .footer-status-online {
-  color: var(--status-online);
+  --status-dot-color: var(--status-online);
 }
 
 .footer-status-offline {
-  color: var(--status-offline);
+  --status-dot-color: var(--status-offline);
 }
 
 .footer-socials {
   display: inline-flex;
   align-items: center;
   gap: 1.1rem;
-  padding-right: 0.5rem;
+  margin-left: 0;
 }
 
 .footer-socials a {
@@ -189,17 +276,40 @@ body {
   align-items: center;
 }
 
+/* ------------------------------------------- */
+/* ------------- Theme Toggles ---------------*/
+/* ----------------------------------------- */
+
 .theme-toggle {
-  display: inline-flex;
+  --theme-count: 1;
+  --active-index: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--theme-count), minmax(0, 1fr));
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.1rem;
   padding: 0.22rem;
   border-radius: 999px;
   border: 1px solid var(--footer-line);
   background: rgba(255, 255, 255, 0.04);
 }
 
+.theme-slider {
+  position: absolute;
+  top: 0.22rem;
+  bottom: 0.22rem;
+  left: 0.22rem;
+  width: calc((100% - 0.44rem) / var(--theme-count));
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  transform: translateX(calc(var(--active-index) * 100%));
+  transition: transform 240ms ease;
+  pointer-events: none;
+}
+
 .theme-btn {
+  position: relative;
+  z-index: 1;
   border: 0;
   background: transparent;
   color: var(--footer-text);
@@ -215,8 +325,16 @@ body {
 }
 
 .theme-btn-active {
-  color: #091427;
-  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  color: var(--theme-active-text);
+}
+
+.status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--status-dot-color, var(--status-offline));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-dot-color, var(--status-offline)) 30%, transparent);
+  margin-right: 0.45rem;
 }
 
 .brand {
@@ -225,10 +343,41 @@ body {
   gap: 0.5rem;
 }
 
+.brand-logo-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.brand-logo-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(112, 120, 132, 0.9);
+  transform: scaleX(0.12);
+  transform-origin: left center;
+  opacity: 0;
+  transition: transform 280ms ease, opacity 220ms ease;
+}
+
+[data-theme="light"] .brand-logo-shell::before {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
 .brand-logo {
-  height: 20px;
-  width: auto;
+  position: relative;
+  z-index: 1;
+  width: 1.35rem;
+  height: 1.35rem;
   display: block;
+  object-fit: contain;
 }
 
 .brand-name {
@@ -257,8 +406,11 @@ body {
 
 @media (max-width: 1100px) {
   .site-footer-inner {
-    flex-wrap: wrap;
     justify-content: center;
+  }
+
+  .footer-socials {
+    margin-left: 0;
   }
 }
 

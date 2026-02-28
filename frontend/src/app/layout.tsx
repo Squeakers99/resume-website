@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { execSync } from "node:child_process";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
-import { FaGithub, FaInstagram, FaLinkedinIn } from "react-icons/fa";
+import { FaCodeBranch, FaGithub, FaInstagram, FaLinkedinIn } from "react-icons/fa";
 import ThemeToggle from "@/app/components/ThemeToggle";
-import { getBackendStatus, incrementAndGetSiteViews } from "@/lib/api";
+import { getBackendStatus } from "@/lib/api";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,18 +22,36 @@ export const metadata: Metadata = {
   description: "Portfolio website for Soheil Rajabali, mechatronics engineer and software developer.",
 };
 
+function getGitMeta() {
+  try {
+    const branchCode = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+    const commitCountRaw = execSync("git rev-list --count HEAD", { encoding: "utf8" }).trim();
+    const commitCount = Number.parseInt(commitCountRaw, 10);
+
+    return {
+      branchCode: branchCode || "N/A",
+      commitCount: Number.isFinite(commitCount) ? commitCount : 0,
+    };
+  } catch {
+    return {
+      branchCode: "N/A",
+      commitCount: 0,
+    };
+  }
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [backendStatus, views] = await Promise.all([
+  const [backendStatus, gitMeta] = await Promise.all([
     getBackendStatus(),
-    incrementAndGetSiteViews(),
+    Promise.resolve(getGitMeta()),
   ]);
   const isConnected = backendStatus === "connected";
   const year = new Date().getFullYear();
-  const formattedViews = new Intl.NumberFormat("en-US").format(views);
+  const formattedCommits = new Intl.NumberFormat("en-US").format(gitMeta.commitCount);
 
   return (
     <html lang="en">
@@ -40,7 +59,9 @@ export default async function RootLayout({
         <header className="site-header" aria-label="Primary site navigation">
           <div className="site-header-inner">
             <div className="brand">
-              <img className="brand-logo" src="/logo.png" alt="Soheil Rajabali logo" />
+              <span className="brand-logo-shell">
+                <img className="brand-logo" src="/logo.png" alt="Soheil Rajabali logo" />
+              </span>
               <span className="brand-name">SOHEIL RAJABALI</span>
             </div>
 
@@ -61,25 +82,29 @@ export default async function RootLayout({
 
         <footer className="site-footer" aria-label="Site footer">
           <div className="site-footer-inner">
-            <span className="footer-item">(c) {year} Soheil Rajabali</span>
-            <span className={`footer-item footer-status ${isConnected ? "footer-status-online" : "footer-status-offline"}`}>
-              Backend Status: {isConnected ? "Connected" : "Disconnected"}
-            </span>
-            <span className="footer-item">Views: {formattedViews}</span>
-            <span className="footer-item">git: main</span>
-            <div className="footer-socials" aria-label="Social links">
-              <a href="#" aria-label="GitHub">
-                <FaGithub aria-hidden="true" />
-              </a>
-              <a href="#" aria-label="LinkedIn">
-                <FaLinkedinIn aria-hidden="true" />
-              </a>
-              <a href="#" aria-label="Instagram">
-                <FaInstagram aria-hidden="true" />
-              </a>
-            </div>
             <div className="footer-theme">
               <ThemeToggle />
+            </div>
+            <span className="footer-item" aria-label="GitHub branch code">
+              <FaCodeBranch aria-hidden="true" style={{ marginRight: "0.35rem" }} />
+              {gitMeta.branchCode}
+            </span>
+            <span className="footer-item">&#169; {year} Soheil Rajabali</span>
+            <span className="footer-item">Commits: {formattedCommits}</span>
+            <span className={`footer-item footer-status ${isConnected ? "footer-status-online" : "footer-status-offline"}`}>
+              <span className="status-dot"/>
+              {isConnected ? "Systems Operational" : "Systems Down"}
+            </span>
+            <div className="footer-socials" aria-label="Social links">
+              <a href="https://github.com/Squeakers99" aria-label="GitHub">
+                <FaGithub aria-hidden="true" />
+              </a>
+              <a href="https://www.linkedin.com/in/soheilrajabali/" aria-label="LinkedIn">
+                <FaLinkedinIn aria-hidden="true" />
+              </a>
+              <a href="https://www.instagram.com/soheil.rajabali/" aria-label="Instagram">
+                <FaInstagram aria-hidden="true" />
+              </a>
             </div>
           </div>
         </footer>
