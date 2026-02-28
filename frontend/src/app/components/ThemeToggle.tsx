@@ -3,15 +3,14 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-type Theme = "ocean" | "slate" | "forest" | "sunset" | "light" | "dark";
+type Theme = "ocean" | "forest" | "sunset" | "light" | "solaris";
 
 const THEMES: Array<{ id: Theme; label: string }> = [
   { id: "ocean", label: "Ocean" },
-  { id: "slate", label: "Slate" },
   { id: "forest", label: "Forest" },
   { id: "sunset", label: "Sunset" },
   { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
+  { id: "solaris", label: "Solaris" },
 ];
 
 const STORAGE_KEY = "site-theme";
