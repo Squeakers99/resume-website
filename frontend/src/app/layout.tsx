@@ -22,10 +22,10 @@ export const metadata: Metadata = {
   description: "Portfolio website for Soheil Rajabali, mechatronics engineer and software developer.",
 };
 
-async function getCommitCountFromGitHub(owner: string, repo: string, ref: string): Promise<number | null> {
+async function getCommitCountFromGitHub(owner: string, repo: string, branch: string): Promise<number | null> {
   try {
     const githubToken = process.env.GITHUB_TOKEN?.trim();
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?sha=${encodeURIComponent(ref)}&per_page=1`, {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?sha=${encodeURIComponent(branch)}&per_page=1`, {
       next: { revalidate: 3600 },
       headers: {
         Accept: "application/vnd.github+json",
@@ -51,11 +51,32 @@ async function getCommitCountFromGitHub(owner: string, repo: string, ref: string
   }
 }
 
+async function getGitHubBranchCode(owner: string, repo: string, branch: string): Promise<string | null> {
+  try {
+    const githubToken = process.env.GITHUB_TOKEN?.trim();
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches/${encodeURIComponent(branch)}`, {
+      next: { revalidate: 3600 },
+      headers: {
+        Accept: "application/vnd.github+json",
+        ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
+      },
+    });
+    if (!res.ok) return null;
+
+    const body = (await res.json()) as { commit?: { sha?: string } };
+    const sha = body.commit?.sha?.trim();
+    return sha ? sha.slice(0, 7) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function getGitMeta() {
   const vercelSha = process.env.VERCEL_GIT_COMMIT_SHA?.trim();
   const vercelRef = process.env.VERCEL_GIT_COMMIT_REF?.trim();
-  const vercelOwner = process.env.VERCEL_GIT_REPO_OWNER?.trim();
-  const vercelRepo = process.env.VERCEL_GIT_REPO_SLUG?.trim();
+  const vercelOwner = process.env.VERCEL_GIT_REPO_OWNER?.trim() || "Squeakers99";
+  const vercelRepo = process.env.VERCEL_GIT_REPO_SLUG?.trim() || "resume-website";
+  const targetBranch = process.env.GITHUB_MAIN_BRANCH?.trim() || "main";
 
   try {
     const branchCode = vercelSha?.slice(0, 7) || execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
@@ -67,15 +88,16 @@ async function getGitMeta() {
       commitCount: Number.isFinite(commitCount) ? commitCount : null,
     };
   } catch {
-    const fallbackBranch = vercelSha?.slice(0, 7) || vercelRef || "N/A";
-    const fallbackCount =
-      vercelOwner && vercelRepo && vercelRef
-        ? await getCommitCountFromGitHub(vercelOwner, vercelRepo, vercelRef)
-        : null;
+    const [githubBranchCode, githubCommitCount] = await Promise.all([
+      getGitHubBranchCode(vercelOwner, vercelRepo, targetBranch),
+      getCommitCountFromGitHub(vercelOwner, vercelRepo, targetBranch),
+    ]);
+
+    const fallbackBranch = githubBranchCode || vercelSha?.slice(0, 7) || vercelRef || "N/A";
 
     return {
       branchCode: fallbackBranch,
-      commitCount: fallbackCount,
+      commitCount: githubCommitCount,
     };
   }
 }
