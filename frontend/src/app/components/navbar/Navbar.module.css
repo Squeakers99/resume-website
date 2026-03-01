@@ -2,9 +2,10 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  border-bottom: 1px solid var(--header-line);
-  background: var(--header-bg);
-  backdrop-filter: blur(10px);
+  border-bottom: none;
+  background: color-mix(in srgb, var(--header-bg) 94%, transparent);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
 }
 
 .siteHeaderInner {
@@ -98,6 +99,10 @@
 }
 
 @media (max-width: 900px) {
+  .isExpanded {
+    border-bottom-color: transparent;
+  }
+
   .isCollapsed .siteHeaderInner {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
@@ -120,19 +125,13 @@
     visibility: hidden;
   }
 
-  .isCollapsed .mainNav.closing {
-    position: static;
-    left: auto;
-    right: auto;
-    top: auto;
-  }
-
   .isExpanded .siteHeaderInner {
     padding-top: 0.34rem;
-    padding-bottom: 0.12rem;
+    padding-bottom: 0;
   }
 
   .siteHeaderInner {
+    position: relative;
     flex-wrap: wrap;
     align-items: center;
   }
@@ -199,21 +198,31 @@
 
   .mainNav {
     order: 3;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% - 1px);
     width: 100%;
     margin-left: 0;
     margin-top: 0;
     max-height: 0;
     opacity: 0;
     overflow: hidden;
+    pointer-events: none;
     visibility: hidden;
     transform: translateY(-10px);
     transform-origin: top center;
     transition: max-height 460ms ease, opacity 320ms ease, transform 460ms ease, visibility 0s linear 460ms;
+    z-index: 60;
+    border: 1px solid var(--header-line);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    background: color-mix(in srgb, var(--header-bg) 95%, transparent);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
   }
 
   .mainNav.open {
-    position: static;
-    margin-top: 0.35rem;
     max-height: 12rem;
     opacity: 1;
     pointer-events: auto;
@@ -227,7 +236,12 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0.35rem;
-    padding-top: 0.4rem;
+    padding: 0 0.45rem 0.45rem;
+  }
+
+  .mainNav.open .navList {
+    padding-top: 0.75rem;
+    border-top: none;
   }
 
   .mainNav .navList li {
