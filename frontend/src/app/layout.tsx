@@ -24,13 +24,14 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://soheilrajabali.dev"
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  manifest: "/site.webmanifest",
   icons: {
     icon: "/Logo.png",
     shortcut: "/Logo.png",
     apple: "/Logo.png",
   },
   title: {
-    default: "Soheil Rajabali | Mechatronics Engineer and Software Developer",
+    default: "Soheil Rajabali | Mechatronics Engineer",
     template: "%s | Soheil Rajabali",
   },
   description:
@@ -49,7 +50,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: siteUrl,
-    title: "Soheil Rajabali | Mechatronics Engineer and Software Developer",
+    title: "Soheil Rajabali | Mechatronics Engineer",
     description:
       description,
     siteName: "Soheil Rajabali Portfolio",
@@ -64,7 +65,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Soheil Rajabali | Mechatronics Engineer and Software Developer",
+    title: "Soheil Rajabali | Mechatronics Engineer",
     description:
       description,
     images: ["/Logo.png"],
@@ -196,10 +197,34 @@ export default async function RootLayout({
     name: "Soheil Rajabali Portfolio",
     url: siteUrl,
   };
+  const organizationStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Soheil Rajabali",
+    url: siteUrl,
+    logo: `${siteUrl}/Logo.png`,
+    sameAs: [
+      "https://github.com/Squeakers99",
+      "https://www.linkedin.com/in/soheilrajabali/",
+      "https://www.instagram.com/soheil.rajabali/",
+    ],
+  };
 
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(personStructuredData) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationStructuredData) }}
+        />
         <Navbar />
 
         <div className="site-main">{children}</div>
