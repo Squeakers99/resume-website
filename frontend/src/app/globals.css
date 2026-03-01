@@ -255,12 +255,13 @@ body *::after {
 }
 
 @media (hover: none) {
-  .footer-socials a {
-    transition: none;
-  }
-
-  .footer-socials a:hover {
+  .footer-socials a,
+  .footer-socials a:hover,
+  .footer-socials a:active,
+  .footer-socials a:focus,
+  .footer-socials a:focus-visible {
     color: var(--footer-link);
+    transition: none;
   }
 }
 
