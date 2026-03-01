@@ -78,7 +78,7 @@ export default function Navbar() {
           className={`${styles.mainNav} ${collapsed ? "" : styles.open} ${isClosing ? styles.closing : ""}`}
           aria-label="Main navigation"
           aria-hidden={isMenuHidden}
-          inert={isMenuHidden ? "" : undefined}
+          inert={isMenuHidden}
         >
           <ul className={styles.navList}>
             <li>
