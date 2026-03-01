@@ -254,6 +254,16 @@ body *::after {
   color: var(--socials-hover);
 }
 
+@media (hover: none) {
+  .footer-socials a {
+    transition: none;
+  }
+
+  .footer-socials a:hover {
+    color: var(--footer-link);
+  }
+}
+
 .footer-theme {
   display: inline-flex;
   align-items: center;
