@@ -24,6 +24,11 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://soheilrajabali.dev"
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  icons: {
+    icon: "/Logo.png",
+    shortcut: "/Logo.png",
+    apple: "/Logo.png",
+  },
   title: {
     default: "Soheil Rajabali | Mechatronics Engineer and Software Developer",
     template: "%s | Soheil Rajabali",
