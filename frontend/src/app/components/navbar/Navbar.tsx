@@ -9,6 +9,7 @@ export default function Navbar() {
   const [isClosing, setIsClosing] = useState(false);
   const closeDurationMs = 460;
   const closeTimerRef = useRef<number | null>(null);
+  const isMenuHidden = collapsed && !isClosing;
 
   useEffect(() => {
     return () => {
@@ -76,15 +77,17 @@ export default function Navbar() {
           id="primary-navigation"
           className={`${styles.mainNav} ${collapsed ? "" : styles.open} ${isClosing ? styles.closing : ""}`}
           aria-label="Main navigation"
+          aria-hidden={isMenuHidden}
+          inert={isMenuHidden ? "" : undefined}
         >
           <ul className={styles.navList}>
             <li>
-              <Link href="/" onClick={closeMenu}>
+              <Link href="/" onClick={closeMenu} tabIndex={isMenuHidden ? -1 : undefined}>
                 Home
               </Link>
             </li>
             <li>
-              <Link href="/projects" onClick={closeMenu}>
+              <Link href="/projects" onClick={closeMenu} tabIndex={isMenuHidden ? -1 : undefined}>
                 Projects
               </Link>
             </li>
