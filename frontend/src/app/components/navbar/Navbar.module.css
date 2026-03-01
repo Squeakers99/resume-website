@@ -1,0 +1,265 @@
+.siteHeader {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--header-line);
+  background: var(--header-bg);
+  backdrop-filter: blur(10px);
+}
+
+.siteHeaderInner {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 0.9rem clamp(1rem, 3vw, 2rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brandLogoShell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.brandLogoShell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(112, 120, 132, 0.9);
+  transform: scaleX(0.12);
+  transform-origin: left center;
+  opacity: 0;
+  transition: transform 280ms ease, opacity 220ms ease;
+}
+
+:global([data-theme="light"]) .brandLogoShell::before {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+.brandLogo {
+  position: relative;
+  z-index: 1;
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
+  object-fit: contain;
+}
+
+.brandName {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.siteNav {
+  display: none;
+}
+
+.mainNav {
+  display: block;
+  margin-left: auto;
+}
+
+.navToggle {
+  display: none;
+}
+
+.navList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: clamp(0.5rem, 2vw, 1.25rem);
+  font-size: 0.82rem;
+}
+
+.navList a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.navList a:hover {
+  color: var(--text-main);
+}
+
+@media (max-width: 900px) {
+  .isCollapsed .siteHeaderInner {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    align-items: center;
+  }
+
+  .isCollapsed .brand,
+  .isCollapsed .siteNav {
+    display: flex;
+    align-items: center;
+  }
+
+  .isCollapsed .mainNav {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .isCollapsed .mainNav.closing {
+    position: static;
+    left: auto;
+    right: auto;
+    top: auto;
+  }
+
+  .isExpanded .siteHeaderInner {
+    padding-top: 0.34rem;
+    padding-bottom: 0.12rem;
+  }
+
+  .siteHeaderInner {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .brand {
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .brandName {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .siteNav {
+    display: block;
+    margin-left: auto;
+  }
+
+  .navToggle {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+    color: var(--text-main);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .navToggleBar {
+    position: absolute;
+    width: 1.15rem;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    transition: transform 320ms ease, opacity 260ms ease;
+  }
+
+  .navToggleBar:nth-child(1) {
+    transform: translateY(-0.34rem);
+  }
+
+  .navToggleBar:nth-child(3) {
+    transform: translateY(0.34rem);
+  }
+
+  .isOpen .navToggleBar:nth-child(1) {
+    transform: rotate(45deg);
+  }
+
+  .isOpen .navToggleBar:nth-child(2) {
+    opacity: 0;
+  }
+
+  .isOpen .navToggleBar:nth-child(3) {
+    transform: rotate(-45deg);
+  }
+
+  .mainNav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    margin-top: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transform-origin: top center;
+    transition: max-height 460ms ease, opacity 320ms ease, transform 460ms ease, visibility 0s linear 460ms;
+  }
+
+  .mainNav.open {
+    position: static;
+    margin-top: 0.35rem;
+    max-height: 12rem;
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transform: translateY(0);
+    transition: max-height 460ms ease, opacity 320ms ease, transform 460ms ease, visibility 0s linear 0s;
+  }
+
+  .mainNav .navList {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    padding-top: 0.4rem;
+  }
+
+  .mainNav .navList li {
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 340ms ease, transform 360ms ease;
+  }
+
+  .mainNav.open .navList li {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .mainNav.open .navList li:nth-child(1) {
+    transition-delay: 80ms;
+  }
+
+  .mainNav.open .navList li:nth-child(2) {
+    transition-delay: 160ms;
+  }
+
+  .mainNav .navList a {
+    display: block;
+    border: 1px solid color-mix(in srgb, var(--header-line) 65%, transparent);
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+    background: color-mix(in srgb, var(--card) 55%, transparent);
+  }
+}
+
+@media (max-width: 620px) {
+  .navList {
+    flex-wrap: wrap;
+  }
+}
