@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { execSync } from "node:child_process";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
 import { FaCodeBranch, FaGithub, FaInstagram, FaLinkedinIn } from "react-icons/fa";
+import Navbar from "@/app/components/navbar/Navbar";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { getBackendStatus } from "@/lib/api";
 import "./globals.css";
@@ -195,35 +195,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(personStructuredData) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
-        />
-        <header className="site-header" aria-label="Primary site navigation">
-          <div className="site-header-inner">
-            <div className="brand">
-              <span className="brand-logo-shell">
-                <img className="brand-logo" src="/Logo.png" alt="Soheil Rajabali logo" />
-              </span>
-              <span className="brand-name">SOHEIL RAJABALI</span>
-            </div>
-
-            <nav aria-label="Main navigation">
-              <ul className="nav-list">
-                <li>
-                  <Link href="/">Home</Link>
-                </li>
-                <li>
-                  <Link href="/projects">Projects</Link>
-                </li>
-              </ul>
-            </nav>
-          </div>
-        </header>
+        <Navbar />
 
         <div className="site-main">{children}</div>
 
