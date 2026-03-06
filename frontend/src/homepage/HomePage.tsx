@@ -1,6 +1,16 @@
+import { FaCodeBranch, FaGithub, FaInstagram, FaLinkedinIn } from "react-icons/fa";
+import { getBackendStatus } from "@/lib/api";
+import { getGitMeta } from "@/lib/git";
 import "./homepage.css";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [gitMeta, backendStatus] = await Promise.all([getGitMeta(), getBackendStatus()]);
+  const isConnected = backendStatus === "connected";
+  const formattedCommits =
+    typeof gitMeta.commitCount === "number"
+      ? new Intl.NumberFormat("en-US").format(gitMeta.commitCount)
+      : "--";
+
   return (
     <main className="landing-shell">
       <section className="homepage-panel" aria-label="Homepage section">
@@ -25,6 +35,18 @@ export default function HomePage() {
                 Download Resume
               </a>
             </div>
+
+            <div className="homepage-socials" aria-label="Social links">
+              <a href="https://github.com/Squeakers99" aria-label="GitHub">
+                <FaGithub aria-hidden="true" />
+              </a>
+              <a href="https://www.linkedin.com/in/soheilrajabali/" aria-label="LinkedIn">
+                <FaLinkedinIn aria-hidden="true" />
+              </a>
+              <a href="https://www.instagram.com/soheil.rajabali/" aria-label="Instagram">
+                <FaInstagram aria-hidden="true" />
+              </a>
+            </div>
           </div>
 
           <div className="homepage-visual" role="presentation">
@@ -35,9 +57,28 @@ export default function HomePage() {
                 className="portrait-image"
               />
             </div>
+            <div className="repo-stats-card" aria-label="Repository and system status">
+              <div className="repo-stats-top">
+                <div className="repo-stats-icon-wrap">
+                  <FaCodeBranch aria-hidden="true" className="repo-stats-icon" />
+                </div>
+                <div className="repo-stats-git">
+                  <div className="repo-branch-code" aria-label="GitHub branch code">
+                    {"main-" + gitMeta.branchCode}
+                  </div>
+                  <div className="repo-commits-count">
+                    {formattedCommits} Commits
+                  </div>
+                </div>
+              </div>
+              <div className="repo-stats-divider" aria-hidden="true" />
+              <div className={`repo-stats-status ${isConnected ? "repo-stats-online" : "repo-stats-offline"}`}>
+                <span className="repo-stats-dot" aria-hidden="true" />
+                <span>{isConnected ? "Systems Operational" : "Systems Down"}</span>
+              </div>
+            </div>
           </div>
         </div>
-
       </section>
     </main>
   );

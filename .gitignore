@@ -48,8 +48,14 @@ Thumbs.db
 # ------------------------------
 .vscode/
 .idea/
+.cursor/
 
 # ------------------------------
 # Coverage
 # ------------------------------
 coverage/
+
+# ------------------------------
+# Project plan (local reference only, do not commit)
+# ------------------------------
+docs/PROJECT_PLAN.md
