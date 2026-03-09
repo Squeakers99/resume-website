@@ -1,0 +1,91 @@
+/* Dashboard shell — theme variables from globals.css */
+.wrapper {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--header-line);
+  background: var(--card);
+  border-radius: 12px;
+  color: var(--text-main);
+}
+
+.topBarTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.topBarNote {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  .main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  border: 1px solid var(--card-edge);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 1.25rem;
+  color: var(--text-main);
+}
+
+.panelTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-main);
+}
+
+.panelPlaceholder {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.subPanel {
+  border: 1px solid var(--card-edge);
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+  border-radius: 10px;
+  padding: 1rem;
+  color: var(--text-main);
+}
+
+.subPanelTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.subPanelPlaceholder {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
