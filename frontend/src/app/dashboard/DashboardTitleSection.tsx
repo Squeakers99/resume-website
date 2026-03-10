@@ -7,7 +7,10 @@ type Props = {
 export default function DashboardTitleSection({ backendConnected }: Props) {
   return (
     <section className={styles.titleSection} aria-label="Dashboard title and status">
-      <h1 className={styles.titleSectionHeading}>Dashboard</h1>
+      <div className={styles.titleSectionLeft}>
+        <h1 className={styles.titleSectionHeading}>/dashboard</h1>
+        <span className={styles.titleSectionSubtitle}>Workspace</span>
+      </div>
       <div className={styles.titleSectionMeta}>
         <div className={styles.titleSectionAuth}>
           <span className={styles.titleSectionAuthLabel}>Auth</span>

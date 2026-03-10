@@ -17,7 +17,7 @@ export default function UpcomingEventsSection() {
   return (
     <section className={styles.card} aria-label="Upcoming events">
       <div className={styles.calendarHeader}>
-        <h2 className={styles.cardTitle}>Upcoming Events</h2>
+        <h2 className={styles.cardTitle}>upcoming-events</h2>
         <p className={styles.calendarMonth}>Nov 2024</p>
       </div>
       <div className={styles.viewTabs}>

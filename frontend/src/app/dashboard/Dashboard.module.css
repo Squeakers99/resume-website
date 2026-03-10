@@ -1,70 +1,95 @@
-/* Dashboard — theme variables from globals.css */
+/* Dashboard — developer dashboard aesthetic, theme variables from globals.css */
 .wrapper {
   width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: clamp(1rem, 3vw, 2rem);
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
-/* ----- Title section ----- */
+/* ----- Title section (status bar / workspace header) ----- */
 .titleSection {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--header-line);
-  background: var(--card);
-  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--card-edge);
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+  border-radius: 10px;
   color: var(--text-main);
+  border-left: 3px solid var(--accent);
+}
+
+.titleSectionLeft {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
 }
 
 .titleSectionHeading {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.02em;
+}
+
+.titleSectionSubtitle {
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
 }
 
 .titleSectionMeta {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
 .titleSectionAuth {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.1rem;
 }
 
 .titleSectionAuthLabel {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
 }
 
 .titleSectionAuthValue {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-main);
 }
 
 .titleSectionBackend {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-main);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-edge) 50%, transparent);
+  border: 1px solid var(--card-edge);
 }
 
 .backendDot {
   flex-shrink: 0;
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.45rem;
+  height: 0.45rem;
   border-radius: 999px;
   background: var(--status-offline);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-offline) 35%, transparent);
@@ -92,7 +117,12 @@
 
 @media (max-width: 768px) {
   .titleSection {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .titleSectionMeta {
+    width: 100%;
   }
 }
 
@@ -124,24 +154,29 @@
   min-height: 0;
 }
 
-/* ----- Cards (shared panel style) ----- */
+/* ----- Cards (shared panel style — IDE panel feel) ----- */
 .card {
   border: 1px solid var(--card-edge);
-  background: var(--card);
-  border-radius: 12px;
-  padding: 1.25rem;
+  background: color-mix(in srgb, var(--card) 99%, var(--bg-1));
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
   color: var(--text-main);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
 .cardTitle {
-  margin: 0 0 0.2rem;
-  font-size: 1.1rem;
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  color: var(--text-main);
 }
 
 .cardSubtitle {
   margin: 0 0 1rem;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-muted);
 }
 
@@ -171,8 +206,10 @@
 }
 
 .label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.03em;
   color: var(--text-muted);
 }
 
@@ -180,12 +217,13 @@
 .textarea,
 .select {
   width: 100%;
-  padding: 0.5rem 0.65rem;
-  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-main);
   background: color-mix(in srgb, var(--bg-1) 80%, var(--card));
   border: 1px solid var(--card-edge);
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .textarea {
@@ -225,12 +263,20 @@
 .btnSecondary,
 .btnAdd {
   padding: 0.45rem 0.75rem;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-main);
   background: color-mix(in srgb, var(--card-edge) 60%, var(--card));
   border: 1px solid var(--card-edge);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btnSecondary:hover,
+.btnAdd:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--card-edge));
+  background: color-mix(in srgb, var(--card-edge) 70%, var(--card));
 }
 
 .btnAdd {
@@ -245,11 +291,12 @@
 
 .chip {
   padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--accent);
   background: color-mix(in srgb, var(--chip) 90%, var(--card));
   border: 1px solid var(--card-edge);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .formActions {
@@ -260,13 +307,20 @@
 
 .btnPrimary {
   padding: 0.5rem 1rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--theme-active-text, #091427);
   background: var(--accent);
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 80%, transparent);
 }
 
 .btnSecondary:last-of-type {
@@ -291,18 +345,26 @@
 .kanbanColumnHeader {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
+  gap: 0.5rem;
+  font-size: 0.7rem;
   font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--card-edge);
+}
+
+.kanbanColumnTitle {
+  /* inherits from .kanbanColumnHeader */
 }
 
 .kanbanColumnCount {
   font-size: 0.7rem;
   color: var(--text-muted);
   opacity: 0.9;
+  margin-left: auto;
 }
 
 .kanbanColumnCards {
@@ -314,18 +376,25 @@
 .taskCard {
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--card-edge);
-  background: color-mix(in srgb, var(--card) 95%, var(--bg-1));
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+  border-radius: 6px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.taskCard:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--card-edge));
 }
 
 .taskCardTitle {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 500;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   margin-bottom: 0.25rem;
 }
 
 .taskCardMeta {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-muted);
   display: flex;
   justify-content: space-between;
@@ -355,7 +424,8 @@
 
 .calendarMonth {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-muted);
 }
 
@@ -367,7 +437,8 @@
 
 .viewTab {
   padding: 0.35rem 0.6rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-muted);
   background: transparent;
   border: 1px solid var(--card-edge);
@@ -388,8 +459,9 @@
 }
 
 .calendarWeekday {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   text-transform: uppercase;
   color: var(--text-muted);
   padding: 0.25rem 0;
@@ -418,6 +490,7 @@
 
 .calendarCellDay {
   font-weight: 500;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   color: var(--text-main);
 }
 

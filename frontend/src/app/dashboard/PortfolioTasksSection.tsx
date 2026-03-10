@@ -31,7 +31,7 @@ const PLACEHOLDER_TASKS: Record<string, { title: string; priority: string; date:
 export default function PortfolioTasksSection() {
   return (
     <section className={styles.card} aria-label="Portfolio tasks">
-      <h2 className={styles.cardTitle}>Portfolio Tasks</h2>
+      <h2 className={styles.cardTitle}>portfolio-tasks</h2>
       <div className={styles.kanban}>
         {COLUMNS.map((col) => (
           <div key={col.id} className={styles.kanbanColumn}>

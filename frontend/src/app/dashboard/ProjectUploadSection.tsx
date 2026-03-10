@@ -3,26 +3,10 @@
 import styles from "./Dashboard.module.css";
 
 export default function ProjectUploadSection() {
-  // #region agent log
-  if (typeof fetch !== "undefined") {
-    fetch("http://127.0.0.1:7317/ingest/8b4e811e-3fb3-4639-815b-3daaeaa642e8", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "09ea6a" },
-      body: JSON.stringify({
-        sessionId: "09ea6a",
-        location: "ProjectUploadSection.tsx:render",
-        message: "ProjectUploadSection render",
-        data: { hasFormWithOnSubmit: true },
-        timestamp: Date.now(),
-        hypothesisId: "H1",
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
   return (
     <section className={styles.card} aria-label="Project upload">
-      <h2 className={styles.cardTitle}>Project Upload</h2>
-      <p className={styles.cardSubtitle}>Add New Project</p>
+      <h2 className={styles.cardTitle}>project-upload</h2>
+      <p className={styles.cardSubtitle}>Add new project to portfolio</p>
 
       <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
         <div className={styles.formRow}>
