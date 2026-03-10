@@ -19,15 +19,21 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function getBackendStatus(): Promise<"connected" | "disconnected"> {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!base) return "disconnected";
-
   try {
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!base) return "disconnected";
+
     const res = await fetch(`${base}/health`, { cache: "no-store" });
     if (!res.ok) return "disconnected";
 
-    const body = (await res.json()) as { ok?: boolean };
-    return body.ok ? "connected" : "disconnected";
+    const text = await res.text();
+    if (!text) return "disconnected";
+    try {
+      const body = JSON.parse(text) as { ok?: boolean };
+      return body?.ok === true ? "connected" : "disconnected";
+    } catch {
+      return "disconnected";
+    }
   } catch {
     return "disconnected";
   }

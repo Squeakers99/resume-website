@@ -1,37 +1,47 @@
+import { getBackendStatus } from "@/lib/api";
+import DashboardTitleSection from "./DashboardTitleSection";
+import PortfolioTasksSection from "./PortfolioTasksSection";
+import ProjectUploadSection from "./ProjectUploadSection";
+import UpcomingEventsSection from "./UpcomingEventsSection";
 import styles from "./Dashboard.module.css";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // #region agent log
+  if (typeof fetch !== "undefined") {
+    fetch("http://127.0.0.1:7317/ingest/8b4e811e-3fb3-4639-815b-3daaeaa642e8", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "09ea6a" },
+      body: JSON.stringify({
+        sessionId: "09ea6a",
+        location: "page.tsx:DashboardPage",
+        message: "DashboardPage server render",
+        data: {},
+        timestamp: Date.now(),
+        hypothesisId: "H2",
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
+  let backendConnected = false;
+  try {
+    const backendStatus = await getBackendStatus();
+    backendConnected = backendStatus === "connected";
+  } catch {
+    backendConnected = false;
+  }
+
   return (
     <main className={styles.wrapper}>
-      <div className={styles.topBar}>
-        <h1 className={styles.topBarTitle}>Dashboard</h1>
-        <span className={styles.topBarNote}>Sign in coming soon</span>
-      </div>
+      <DashboardTitleSection backendConnected={backendConnected} />
 
-      <div className={styles.main}>
-        <section className={styles.panel} aria-label="Project management">
-          <h2 className={styles.panelTitle}>Project management</h2>
-          <p className={styles.panelPlaceholder}>
-            Create and edit portfolio projects. (Placeholder — add form and list here.)
-          </p>
-        </section>
-
-        <section className={styles.panel} aria-label="To-dos and calendar">
-          <div className={styles.rightPanel}>
-            <div className={styles.subPanel}>
-              <h3 className={styles.subPanelTitle}>To-dos</h3>
-              <p className={styles.subPanelPlaceholder}>
-                Your to-do list will appear here.
-              </p>
-            </div>
-            <div className={styles.subPanel}>
-              <h3 className={styles.subPanelTitle}>Calendar</h3>
-              <p className={styles.subPanelPlaceholder}>
-                Calendar view (month / week / day) will appear here.
-              </p>
-            </div>
-          </div>
-        </section>
+      <div className={styles.contentGrid}>
+        <div className={styles.leftColumn}>
+          <ProjectUploadSection />
+        </div>
+        <div className={styles.rightColumn}>
+          <PortfolioTasksSection />
+          <UpcomingEventsSection />
+        </div>
       </div>
     </main>
   );
