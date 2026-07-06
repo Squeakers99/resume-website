@@ -59,3 +59,10 @@ coverage/
 # Project plan (local reference only, do not commit)
 # ------------------------------
 docs/PROJECT_PLAN.md
+
+# ------------------------------
+# Local AI / tooling artifacts
+# ------------------------------
+.claude/
+.playwright-mcp/
+.remember/

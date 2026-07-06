@@ -5,6 +5,7 @@ export type Project = {
   githubUrl: string;
   imageUrl: string;
   tags: string[];
+  secondaryImages: string[];
   createdAt: string;
 };
 

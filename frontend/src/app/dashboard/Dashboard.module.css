@@ -73,6 +73,23 @@
   color: var(--text-main);
 }
 
+.btnSignOut {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--card-edge) 60%, var(--card));
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btnSignOut:hover {
+  border-color: color-mix(in srgb, var(--status-offline) 50%, var(--card-edge));
+  background: color-mix(in srgb, var(--card-edge) 70%, var(--card));
+}
+
 .titleSectionBackend {
   display: inline-flex;
   align-items: center;
@@ -469,23 +486,45 @@
 }
 
 .calendarCell {
-  aspect-ratio: 1;
-  min-height: 2.5rem;
-  padding: 0.2rem;
+  min-height: 3.4rem;
+  padding: 0.25rem 0.3rem;
   font-size: 0.75rem;
   border-radius: 6px;
+  border: 1px solid transparent;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .calendarCell {
+    min-height: 2.4rem;
+    padding: 0.15rem 0.2rem;
+  }
 }
 
 .calendarCellEmpty {
   background: transparent;
 }
 
+.calendarCellButton {
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.calendarCellButton:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--card-edge));
+  background: color-mix(in srgb, var(--card-edge) 35%, transparent);
+}
+
 .calendarCellToday {
   background: color-mix(in srgb, var(--accent) 20%, transparent);
-  border: 1px solid var(--accent);
+  border-color: var(--accent);
 }
 
 .calendarCellDay {
@@ -500,4 +539,226 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.calendarCellMore {
+  font-size: 0.6rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+/* ----- Interactive dashboard additions ----- */
+.chipRemove {
+  margin-left: 0.35rem;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.chipRemove:hover {
+  color: var(--status-offline);
+}
+
+.feedbackOk,
+.feedbackError {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  border-radius: 6px;
+}
+
+.feedbackOk {
+  color: var(--status-online);
+  border: 1px solid color-mix(in srgb, var(--status-online) 40%, var(--card-edge));
+  background: color-mix(in srgb, var(--status-online) 8%, transparent);
+}
+
+.feedbackError {
+  color: var(--status-offline);
+  border: 1px solid color-mix(in srgb, var(--status-offline) 40%, var(--card-edge));
+  background: color-mix(in srgb, var(--status-offline) 8%, transparent);
+}
+
+.offlineNote {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+.kanbanAddForm {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.kanbanAddForm .input {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.taskCardActions {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+}
+
+.iconBtn {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--card-edge) 40%, transparent);
+  border: 1px solid var(--card-edge);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.iconBtn:hover:not(:disabled) {
+  color: var(--text-main);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--card-edge));
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.iconBtnDanger:hover:not(:disabled) {
+  color: var(--status-offline);
+  border-color: color-mix(in srgb, var(--status-offline) 50%, var(--card-edge));
+}
+
+.calendarNav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.agendaList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.agendaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card-edge) 30%, transparent);
+}
+
+.agendaDate {
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.agendaTitle {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.agendaEmpty {
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  padding: 0.45rem 0;
+}
+
+.fileInput {
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  max-width: 100%;
+}
+
+.fileInput::file-selector-button {
+  margin-right: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--card-edge) 60%, var(--card));
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fileInput::file-selector-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--card-edge));
+}
+
+.fileList {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.fileListItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card-edge) 30%, transparent);
+}
+
+.fileListItem .fileName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventForm {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+
+.eventForm .input {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.eventForm .select {
+  flex: 0 1 auto;
+  width: auto;
+}
+
+.eventGoogle {
+  color: var(--status-online);
+}
+
+.sourceBadge {
+  flex-shrink: 0;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.65rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--status-online);
+  border: 1px solid color-mix(in srgb, var(--status-online) 45%, var(--card-edge));
+  border-radius: 999px;
 }

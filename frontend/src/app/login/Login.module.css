@@ -1,0 +1,68 @@
+/* Login — matches the dashboard's developer aesthetic, theme variables from globals.css */
+.wrapper {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--card-edge);
+  background: color-mix(in srgb, var(--card) 99%, var(--bg-1));
+  border-radius: 10px;
+  padding: 1.5rem 1.75rem;
+  color: var(--text-main);
+  border-left: 3px solid var(--accent);
+}
+
+.cardTitle {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  color: var(--text-main);
+}
+
+.cardSubtitle {
+  margin: 0 0 1.25rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+.errorNotice {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--status-offline);
+  border: 1px solid color-mix(in srgb, var(--status-offline) 40%, var(--card-edge));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--status-offline) 8%, transparent);
+}
+
+.btnPrimary {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--theme-active-text, #091427);
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 80%, transparent);
+}
