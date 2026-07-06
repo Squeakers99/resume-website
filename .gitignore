@@ -66,3 +66,8 @@ docs/PROJECT_PLAN.md
 .claude/
 .playwright-mcp/
 .remember/
+
+# ------------------------------
+# UI concept mockups (local reference only)
+# ------------------------------
+ui-concepts/

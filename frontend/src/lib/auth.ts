@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { type Session } from "next-auth";
 import Google from "next-auth/providers/google";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -80,11 +80,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
 // Strict owner check for gating. Auth.js can surface config errors as a
 // truthy non-session object, so gates must never rely on truthiness alone:
-// anything without the allowed email is treated as signed out.
-export async function getOwnerSession() {
-  const session = await auth();
+// anything without the allowed email is treated as signed out. Used by both
+// getOwnerSession() and the /dashboard proxy gate.
+export function isOwnerSession(session: Session | null): boolean {
   const allowed = process.env.ALLOWED_EMAIL?.toLowerCase();
   const email = session?.user?.email?.toLowerCase();
-  if (!allowed || !email || email !== allowed) return null;
-  return session;
+  return Boolean(allowed && email && email === allowed);
+}
+
+export async function getOwnerSession() {
+  const session = await auth();
+  return isOwnerSession(session) ? session : null;
 }
