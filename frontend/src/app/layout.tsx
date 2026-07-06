@@ -86,10 +86,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const year = new Date().getFullYear();
-  const formattedCommits =
-    typeof gitMeta.commitCount === "number"
-      ? new Intl.NumberFormat("en-US").format(gitMeta.commitCount)
-      : "--";
   const personStructuredData = {
     "@context": "https://schema.org",
     "@type": "Person",
