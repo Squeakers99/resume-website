@@ -1,0 +1,16 @@
+{
+  "name": "Soheil Rajabali Portfolio",
+  "short_name": "Soheil Rajabali",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/Logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
