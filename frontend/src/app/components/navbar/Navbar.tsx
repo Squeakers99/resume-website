@@ -4,12 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import styles from "./Navbar.module.css";
 
+const DESKTOP_MIN_WIDTH = 901;
+
 export default function Navbar() {
   const [collapsed, setCollapsed] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
   const closeDurationMs = 460;
   const closeTimerRef = useRef<number | null>(null);
   const isMenuHidden = collapsed && !isClosing;
+  const navIsInert = !isDesktop && isMenuHidden;
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`);
+    const handler = () => setIsDesktop(mql.matches);
+    setIsDesktop(mql.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -77,18 +89,23 @@ export default function Navbar() {
           id="primary-navigation"
           className={`${styles.mainNav} ${collapsed ? "" : styles.open} ${isClosing ? styles.closing : ""}`}
           aria-label="Main navigation"
-          aria-hidden={isMenuHidden}
-          inert={isMenuHidden}
+          aria-hidden={navIsInert}
+          inert={navIsInert || undefined}
         >
           <ul className={styles.navList}>
             <li>
-              <Link href="/" onClick={closeMenu} tabIndex={isMenuHidden ? -1 : undefined}>
+              <Link href="/" onClick={closeMenu} tabIndex={navIsInert ? -1 : undefined}>
                 Home
               </Link>
             </li>
             <li>
-              <Link href="/projects" onClick={closeMenu} tabIndex={isMenuHidden ? -1 : undefined}>
+              <Link href="/projects" onClick={closeMenu} tabIndex={navIsInert ? -1 : undefined}>
                 Projects
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard" onClick={closeMenu} tabIndex={navIsInert ? -1 : undefined}>
+                Dashboard
               </Link>
             </li>
           </ul>

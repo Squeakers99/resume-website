@@ -1,0 +1,764 @@
+/* Dashboard — developer dashboard aesthetic, theme variables from globals.css */
+.wrapper {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1rem, 3vw, 2rem);
+  gap: 1.5rem;
+}
+
+/* ----- Title section (status bar / workspace header) ----- */
+.titleSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--card-edge);
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+  border-radius: 10px;
+  color: var(--text-main);
+  border-left: 3px solid var(--accent);
+}
+
+.titleSectionLeft {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.titleSectionHeading {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.02em;
+}
+
+.titleSectionSubtitle {
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+
+.titleSectionMeta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.titleSectionAuth {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.titleSectionAuthLabel {
+  font-size: 0.65rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.titleSectionAuthValue {
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+}
+
+.btnSignOut {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--card-edge) 60%, var(--card));
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btnSignOut:hover {
+  border-color: color-mix(in srgb, var(--status-offline) 50%, var(--card-edge));
+  background: color-mix(in srgb, var(--card-edge) 70%, var(--card));
+}
+
+.titleSectionBackend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-edge) 50%, transparent);
+  border: 1px solid var(--card-edge);
+}
+
+.backendDot {
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--status-offline);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-offline) 35%, transparent);
+}
+
+.backendOnline .backendDot {
+  background: var(--status-online);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-online) 35%, transparent);
+}
+
+.backendOffline .backendDot {
+  background: var(--status-offline);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-offline) 35%, transparent);
+}
+
+/* ----- Content grid (rows and columns) ----- */
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  .titleSection {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .titleSectionMeta {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+}
+
+.leftColumn {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 900px) {
+  .leftColumn {
+    grid-row: auto;
+  }
+}
+
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+/* ----- Cards (shared panel style — IDE panel feel) ----- */
+.card {
+  border: 1px solid var(--card-edge);
+  background: color-mix(in srgb, var(--card) 99%, var(--bg-1));
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  color: var(--text-main);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.cardTitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  color: var(--text-main);
+}
+
+.cardSubtitle {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+/* ----- Project form ----- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.formRowDouble {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--bg-1) 80%, var(--card));
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+.select {
+  cursor: pointer;
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fileName {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.thumbRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.thumb {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card-edge) 50%, var(--card));
+}
+
+.btnSecondary,
+.btnAdd {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--card-edge) 60%, var(--card));
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btnSecondary:hover,
+.btnAdd:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--card-edge));
+  background: color-mix(in srgb, var(--card-edge) 70%, var(--card));
+}
+
+.btnAdd {
+  border-style: dashed;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--chip) 90%, var(--card));
+  border: 1px solid var(--card-edge);
+  border-radius: 4px;
+}
+
+.formActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.btnPrimary {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--theme-active-text, #091427);
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+.btnSecondary:last-of-type {
+  margin-right: 0;
+}
+
+/* ----- Kanban ----- */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  overflow-x: auto;
+}
+
+.kanbanColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.kanbanColumnHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--card-edge);
+}
+
+.kanbanColumnTitle {
+  /* inherits from .kanbanColumnHeader */
+}
+
+.kanbanColumnCount {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.9;
+  margin-left: auto;
+}
+
+.kanbanColumnCards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.taskCard {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--card-edge);
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+  border-radius: 6px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.taskCard:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--card-edge));
+}
+
+.taskCardTitle {
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  margin-bottom: 0.25rem;
+}
+
+.taskCardMeta {
+  font-size: 0.7rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+@media (max-width: 900px) {
+  .kanban {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 500px) {
+  .kanban {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ----- Calendar ----- */
+.calendarHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.calendarMonth {
+  margin: 0;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+.viewTabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.viewTab {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.viewTabActive {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  border-color: var(--accent);
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendarWeekday {
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.25rem 0;
+  text-align: center;
+}
+
+.calendarCell {
+  min-height: 3.4rem;
+  padding: 0.25rem 0.3rem;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .calendarCell {
+    min-height: 2.4rem;
+    padding: 0.15rem 0.2rem;
+  }
+}
+
+.calendarCellEmpty {
+  background: transparent;
+}
+
+.calendarCellButton {
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.calendarCellButton:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--card-edge));
+  background: color-mix(in srgb, var(--card-edge) 35%, transparent);
+}
+
+.calendarCellToday {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: var(--accent);
+}
+
+.calendarCellDay {
+  font-weight: 500;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+}
+
+.calendarCellEvent {
+  font-size: 0.65rem;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendarCellMore {
+  font-size: 0.6rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+/* ----- Interactive dashboard additions ----- */
+.chipRemove {
+  margin-left: 0.35rem;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.chipRemove:hover {
+  color: var(--status-offline);
+}
+
+.feedbackOk,
+.feedbackError {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  border-radius: 6px;
+}
+
+.feedbackOk {
+  color: var(--status-online);
+  border: 1px solid color-mix(in srgb, var(--status-online) 40%, var(--card-edge));
+  background: color-mix(in srgb, var(--status-online) 8%, transparent);
+}
+
+.feedbackError {
+  color: var(--status-offline);
+  border: 1px solid color-mix(in srgb, var(--status-offline) 40%, var(--card-edge));
+  background: color-mix(in srgb, var(--status-offline) 8%, transparent);
+}
+
+.offlineNote {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+.kanbanAddForm {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.kanbanAddForm .input {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.taskCardActions {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+}
+
+.iconBtn {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--card-edge) 40%, transparent);
+  border: 1px solid var(--card-edge);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.iconBtn:hover:not(:disabled) {
+  color: var(--text-main);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--card-edge));
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.iconBtnDanger:hover:not(:disabled) {
+  color: var(--status-offline);
+  border-color: color-mix(in srgb, var(--status-offline) 50%, var(--card-edge));
+}
+
+.calendarNav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.agendaList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.agendaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card-edge) 30%, transparent);
+}
+
+.agendaDate {
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.agendaTitle {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.agendaEmpty {
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  padding: 0.45rem 0;
+}
+
+.fileInput {
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+  max-width: 100%;
+}
+
+.fileInput::file-selector-button {
+  margin-right: 0.6rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--card-edge) 60%, var(--card));
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fileInput::file-selector-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--card-edge));
+}
+
+.fileList {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.fileListItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card-edge) 30%, transparent);
+}
+
+.fileListItem .fileName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eventForm {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+
+.eventForm .input {
+  flex: 1;
+  min-width: 8rem;
+}
+
+.eventForm .select {
+  flex: 0 1 auto;
+  width: auto;
+}
+
+.eventGoogle {
+  color: var(--status-online);
+}
+
+.sourceBadge {
+  flex-shrink: 0;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.65rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--status-online);
+  border: 1px solid color-mix(in srgb, var(--status-online) 45%, var(--card-edge));
+  border-radius: 999px;
+}

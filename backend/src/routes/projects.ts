@@ -1,17 +1,47 @@
 import { Router } from "express";
+import type { RequestHandler } from "express";
 import { prisma } from "../db/prisma";
 import { requireApiKey } from "../middleware/auth";
 
 const router = Router();
 
-// Public: list projects
+// Public: list projects. Raw SQL because "secondaryImages" is managed
+// outside the Prisma schema (added lazily in routes/dashboard.ts).
 router.get("/", async (_req, res) => {
-  const projects = await prisma.project.findMany({ orderBy: { createdAt: "desc" } });
-  res.json(projects);
+  try {
+    const projects = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        title: string;
+        description: string;
+        githubUrl: string;
+        imageUrl: string;
+        tags: string[];
+        secondaryImages: string[];
+        createdAt: Date;
+      }>
+    >`
+      SELECT id, title, description, "githubUrl", "imageUrl", tags,
+             COALESCE("secondaryImages", ARRAY[]::TEXT[]) AS "secondaryImages",
+             "createdAt"
+      FROM "public"."Project"
+      ORDER BY "createdAt" DESC
+    `;
+    res.json(projects);
+  } catch (error) {
+    // Before the column exists (fresh DB, dashboard never hit), fall back.
+    try {
+      const projects = await prisma.project.findMany({ orderBy: { createdAt: "desc" } });
+      res.json(projects.map((p) => ({ ...p, secondaryImages: [] })));
+    } catch (fallbackError) {
+      console.error("Failed to list projects", fallbackError);
+      res.status(500).json({ error: "Failed to list projects" });
+    }
+  }
 });
 
-// Protected: create project
-router.post("/", requireApiKey, async (req, res) => {
+// Shared create handler, also mounted under /api/dashboard/projects
+export const createProjectHandler: RequestHandler = async (req, res) => {
   const { title, description, githubUrl, tags, imageUrl } = req.body;
 
   if (!title || !description) {
@@ -29,6 +59,9 @@ router.post("/", requireApiKey, async (req, res) => {
   });
 
   res.status(201).json(created);
-});
+};
+
+// Protected: create project
+router.post("/", requireApiKey, createProjectHandler);
 
 export default router;

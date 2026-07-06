@@ -48,8 +48,30 @@ Thumbs.db
 # ------------------------------
 .vscode/
 .idea/
+.cursor/
 
 # ------------------------------
 # Coverage
 # ------------------------------
 coverage/
+
+# ------------------------------
+# Project plan (local reference only, do not commit)
+# ------------------------------
+docs/PROJECT_PLAN.md
+
+# ------------------------------
+# Local AI / tooling artifacts
+# ------------------------------
+.claude/
+.playwright-mcp/
+.remember/
+
+# ------------------------------
+# UI concept mockups (local reference only)
+# ------------------------------
+ui-concepts/
+# ------------------------------
+# Design specs (local reference only)
+# ------------------------------
+docs/superpowers/
