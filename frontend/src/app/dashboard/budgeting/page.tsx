@@ -8,7 +8,6 @@ import {
   type BudgetSummary,
 } from "@/lib/server-api";
 import DashboardTitleSection from "../DashboardTitleSection";
-import DashboardSwitcher from "../DashboardSwitcher";
 import dashStyles from "../Dashboard.module.css";
 import styles from "./Budgeting.module.css";
 import BudgetUploadSection from "./BudgetUploadSection";
@@ -52,7 +51,6 @@ export default async function BudgetingPage() {
   return (
     <main className={dashStyles.wrapper}>
       <DashboardTitleSection backendConnected={backendConnected} />
-      <DashboardSwitcher />
 
       {statements.some((s) => s.validationStatus === "mismatch") && (
         <p className={styles.warningBanner} role="alert">

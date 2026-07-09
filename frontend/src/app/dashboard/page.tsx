@@ -6,7 +6,6 @@ import {
 } from "@/lib/google-calendar";
 import { listTasks, type DashboardTask } from "@/lib/server-api";
 import DashboardTitleSection from "./DashboardTitleSection";
-import DashboardSwitcher from "./DashboardSwitcher";
 import PortfolioTasksSection from "./PortfolioTasksSection";
 import ProjectUploadSection from "./ProjectUploadSection";
 import UpcomingEventsSection from "./UpcomingEventsSection";
@@ -41,7 +40,6 @@ export default async function DashboardPage() {
   return (
     <main className={styles.wrapper}>
       <DashboardTitleSection backendConnected={backendConnected} />
-      <DashboardSwitcher />
 
       <div className={styles.contentGrid}>
         <div className={styles.leftColumn}>
