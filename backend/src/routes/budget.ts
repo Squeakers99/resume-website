@@ -1,10 +1,12 @@
+import { createHash } from "crypto";
 import { Router } from "express";
 import type { RequestHandler } from "express";
 import multer from "multer";
 import pdfParse from "pdf-parse";
 import { prisma } from "../db/prisma";
 import { BUDGET_CATEGORIES, toCents, validateStatement } from "../budget/domain";
-import { ExtractionError, extractStatementFromText } from "../budget/extract";
+import { ExtractionError, extractStatementsFromText } from "../budget/extract";
+import { deleteStatementPdf, putStatementPdf } from "../lib/s3";
 
 const router = Router();
 
@@ -43,6 +45,18 @@ function ensureBudgetTables(): Promise<void> {
 }
 
 async function createBudgetTables() {
+  // One row per uploaded PDF; the raw file lives in S3 under s3_key.
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS budget_documents (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      filename TEXT NOT NULL,
+      s3_key TEXT NOT NULL,
+      content_hash TEXT NOT NULL UNIQUE,
+      size_bytes INTEGER NOT NULL,
+      uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS budget_statements (
       id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -80,11 +94,23 @@ async function createBudgetTables() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS budget_entries_date_idx ON budget_entries(trans_date)`
   );
+
+  // Columns added after the initial table shipped (same pattern as Project.secondaryImages).
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE budget_statements
+    ADD COLUMN IF NOT EXISTS account_type TEXT NOT NULL DEFAULT 'credit_card'
+  `);
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE budget_statements
+    ADD COLUMN IF NOT EXISTS document_id TEXT REFERENCES budget_documents(id)
+  `);
 }
 
 type StatementRow = {
   id: string;
   source: string;
+  account_type: string;
+  document_id: string | null;
   statement_date: Date;
   period_start: Date;
   period_end: Date;
@@ -114,6 +140,8 @@ const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const toStatement = (row: StatementRow) => ({
   id: row.id,
   source: row.source,
+  accountType: row.account_type,
+  documentId: row.document_id,
   statementDate: isoDay(row.statement_date),
   periodStart: isoDay(row.period_start),
   periodEnd: isoDay(row.period_end),
@@ -159,9 +187,18 @@ router.post("/statements", uploadPdf, async (req, res) => {
       return res.status(422).json({ error: "That PDF contains no extractable text" });
     }
 
+    // Exact-file dedupe first — cheaper than an OpenAI call.
+    const contentHash = createHash("sha256").update(req.file.buffer).digest("hex");
+    const docDupes = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM budget_documents WHERE content_hash = ${contentHash}
+    `;
+    if (docDupes.length > 0) {
+      return res.status(409).json({ error: "This exact PDF is already uploaded" });
+    }
+
     let extracted;
     try {
-      extracted = await extractStatementFromText(text);
+      extracted = await extractStatementsFromText(text);
     } catch (error) {
       console.error("Statement extraction failed", error);
       const message =
@@ -171,59 +208,90 @@ router.post("/statements", uploadPdf, async (req, res) => {
       return res.status(502).json({ error: message });
     }
 
-    const dupes = await prisma.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM budget_statements
-      WHERE source = ${extracted.source}
-        AND statement_date = ${extracted.statementDate}::date
-    `;
-    if (dupes.length > 0) {
-      return res.status(409).json({
-        error: `The ${extracted.statementDate} statement for ${extracted.source} is already uploaded`,
+    // One PDF can contain several account sections; reject the whole upload if
+    // any of them is already on file.
+    for (const s of extracted) {
+      const dupes = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM budget_statements
+        WHERE source = ${s.source} AND statement_date = ${s.statementDate}::date
+      `;
+      if (dupes.length > 0) {
+        return res.status(409).json({
+          error: `The ${s.statementDate} statement for ${s.source} is already uploaded`,
+        });
+      }
+    }
+
+    const validations = extracted.map(validateStatement);
+
+    const filename = req.file.originalname || "statement.pdf";
+    const s3Key = `statements/${contentHash.slice(0, 32)}.pdf`;
+    try {
+      await putStatementPdf(s3Key, req.file.buffer);
+    } catch (error) {
+      console.error("Failed to store statement PDF in S3", error);
+      return res.status(502).json({
+        error:
+          "Could not store the PDF in S3 — check the bucket policy allows PutObject on statements/*",
       });
     }
 
-    const validation = validateStatement(extracted);
-
     const result = await prisma.$transaction(async (tx) => {
-      const stmtRows = await tx.$queryRaw<StatementRow[]>`
-        INSERT INTO budget_statements (
-          source, statement_date, period_start, period_end,
-          previous_balance_cents, payments_credits_cents,
-          purchases_total_cents, total_balance_cents,
-          validation_status, extracted_purchases_sum_cents
-        ) VALUES (
-          ${extracted.source}, ${extracted.statementDate}::date,
-          ${extracted.periodStart}::date, ${extracted.periodEnd}::date,
-          ${toCents(extracted.previousBalance)}, ${toCents(extracted.paymentsCredits)},
-          ${toCents(extracted.purchasesTotal)}, ${toCents(extracted.totalBalance)},
-          ${validation.status}, ${validation.extractedPurchasesSumCents}
-        )
-        RETURNING *
+      const docRows = await tx.$queryRaw<Array<{ id: string }>>`
+        INSERT INTO budget_documents (filename, s3_key, content_hash, size_bytes)
+        VALUES (${filename}, ${s3Key}, ${contentHash}, ${req.file!.size})
+        RETURNING id
       `;
-      const statement = stmtRows[0];
+      const documentId = docRows[0].id;
 
-      const entries: EntryRow[] = [];
-      for (const e of extracted.entries) {
-        const rows = await tx.$queryRaw<EntryRow[]>`
-          INSERT INTO budget_entries (
-            statement_id, trans_date, posting_date, description,
-            amount_cents, is_credit, category
+      const results: Array<{ statement: StatementRow; entries: EntryRow[] }> = [];
+      for (let i = 0; i < extracted.length; i++) {
+        const s = extracted[i];
+        const validation = validations[i];
+        const stmtRows = await tx.$queryRaw<StatementRow[]>`
+          INSERT INTO budget_statements (
+            source, account_type, document_id, statement_date, period_start, period_end,
+            previous_balance_cents, payments_credits_cents,
+            purchases_total_cents, total_balance_cents,
+            validation_status, extracted_purchases_sum_cents
           ) VALUES (
-            ${statement.id}, ${e.transDate}::date, ${e.postingDate}::date,
-            ${e.description}, ${toCents(e.amount)}, ${e.isCredit}, ${e.category}
+            ${s.source}, ${s.accountType}, ${documentId}, ${s.statementDate}::date,
+            ${s.periodStart}::date, ${s.periodEnd}::date,
+            ${toCents(s.previousBalance)}, ${toCents(s.paymentsCredits)},
+            ${toCents(s.purchasesTotal)}, ${toCents(s.totalBalance)},
+            ${validation.status}, ${validation.extractedPurchasesSumCents}
           )
-          RETURNING id, statement_id, trans_date, posting_date, description,
-                    amount_cents, is_credit, category
+          RETURNING *
         `;
-        entries.push(rows[0]);
+        const statement = stmtRows[0];
+
+        const entries: EntryRow[] = [];
+        for (const e of s.entries) {
+          const rows = await tx.$queryRaw<EntryRow[]>`
+            INSERT INTO budget_entries (
+              statement_id, trans_date, posting_date, description,
+              amount_cents, is_credit, category
+            ) VALUES (
+              ${statement.id}, ${e.transDate}::date, ${e.postingDate}::date,
+              ${e.description}, ${toCents(e.amount)}, ${e.isCredit}, ${e.category}
+            )
+            RETURNING id, statement_id, trans_date, posting_date, description,
+                      amount_cents, is_credit, category
+          `;
+          entries.push(rows[0]);
+        }
+        results.push({ statement, entries });
       }
-      return { statement, entries };
+      return { documentId, results };
     });
 
     res.status(201).json({
-      statement: toStatement(result.statement),
-      entries: result.entries.map(toEntry),
-      problems: validation.problems,
+      document: { id: result.documentId, filename, s3Key },
+      results: result.results.map((r, i) => ({
+        statement: toStatement(r.statement),
+        entries: r.entries.map(toEntry),
+        problems: validations[i].problems,
+      })),
     });
   } catch (error) {
     // Concurrent upload of the same statement can slip past the pre-check and
@@ -310,10 +378,32 @@ router.patch("/entries/:id", async (req, res) => {
 router.delete("/statements/:id", async (req, res) => {
   try {
     await ensureBudgetTables();
-    const rows = await prisma.$queryRaw<Array<{ id: string }>>`
-      DELETE FROM budget_statements WHERE id = ${req.params.id} RETURNING id
+    const rows = await prisma.$queryRaw<Array<{ id: string; document_id: string | null }>>`
+      DELETE FROM budget_statements WHERE id = ${req.params.id} RETURNING id, document_id
     `;
     if (rows.length === 0) return res.status(404).json({ error: "statement not found" });
+
+    // When the parent PDF has no statements left, remove its document row and
+    // the S3 object — otherwise the content-hash dedupe blocks re-uploads.
+    const documentId = rows[0].document_id;
+    if (documentId) {
+      const docRows = await prisma.$queryRaw<Array<{ s3_key: string }>>`
+        DELETE FROM budget_documents d
+        WHERE d.id = ${documentId}
+          AND NOT EXISTS (SELECT 1 FROM budget_statements s WHERE s.document_id = d.id)
+        RETURNING s3_key
+      `;
+      if (docRows.length > 0) {
+        try {
+          await deleteStatementPdf(docRows[0].s3_key);
+        } catch (error) {
+          // Best-effort: the DB row is gone and a re-upload overwrites the
+          // same content-hash key, so a dangling object is harmless.
+          console.error("Failed to delete statement PDF from S3", error);
+        }
+      }
+    }
+
     res.status(204).end();
   } catch (error) {
     console.error("Failed to delete statement", error);
@@ -327,12 +417,18 @@ router.get("/summary", async (_req, res) => {
   try {
     await ensureBudgetTables();
 
-    const latestRows = await prisma.$queryRaw<StatementRow[]>`
+    const latestOf = (accountType: string) => prisma.$queryRaw<StatementRow[]>`
       SELECT s.*, (SELECT COUNT(*)::int FROM budget_entries e WHERE e.statement_id = s.id) AS entry_count
       FROM budget_statements s
+      WHERE s.account_type = ${accountType}
       ORDER BY s.statement_date DESC
       LIMIT 1
     `;
+    const [latestCard, latestChequing, latestSavings] = await Promise.all([
+      latestOf("credit_card"),
+      latestOf("chequing"),
+      latestOf("savings"),
+    ]);
     const countRows = await prisma.$queryRaw<Array<{ count: number }>>`
       SELECT COUNT(*)::int AS count FROM budget_statements
     `;
@@ -357,7 +453,9 @@ router.get("/summary", async (_req, res) => {
     `;
 
     res.json({
-      latest: latestRows.length ? toStatement(latestRows[0]) : null,
+      latestCard: latestCard.length ? toStatement(latestCard[0]) : null,
+      latestChequing: latestChequing.length ? toStatement(latestChequing[0]) : null,
+      latestSavings: latestSavings.length ? toStatement(latestSavings[0]) : null,
       statementCount: countRows[0].count,
       categoryTotals: categoryTotals.map((r) => ({
         category: r.category,

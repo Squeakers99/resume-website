@@ -1,6 +1,9 @@
 import OpenAI from "openai";
 import {
+  ACCOUNT_TYPES,
   BUDGET_CATEGORIES,
+  validateStatement,
+  type BudgetAccountType,
   type BudgetCategory,
   type ExtractedEntry,
   type ExtractedStatement,
@@ -9,25 +12,45 @@ import {
 export class ExtractionError extends Error {}
 
 const MODEL = "gpt-4.1-nano";
+const FALLBACK_MODEL = "gpt-4.1-mini";
 
-const SYSTEM_PROMPT = `You extract credit-card statement data from raw text.
-Return every transaction in the "Transactions since your last statement" table.
+const SYSTEM_PROMPT = `You extract bank and credit-card statement data from raw text.
+A single statement PDF can contain MULTIPLE account sections (e.g. a chequing
+account and a savings account) — return one statement object per account, with
+every transaction in that account's table.
+
+Account types:
+- credit_card: "Transactions since your last statement". money_in_total = printed
+  "Payments and credits" (magnitude), money_out_total = printed "Purchases and
+  other charges", opening_balance = "Previous total balance", closing_balance =
+  "Total balance". is_credit is true for CR lines (payments, transfers, refunds).
+- chequing / savings ("Everyday Banking" style): each account section has an
+  account summary (Opening balance, Total amounts deducted, Total amounts added,
+  Closing balance → opening_balance, money_out_total, money_in_total,
+  closing_balance). is_credit is true for "Amounts added" lines (deposits,
+  e-Transfers received, direct deposits), false for "Amounts deducted" lines.
+  "Opening balance" and "Closing totals" rows are NOT transactions — skip them.
+  The running Balance column is never an amount.
+
 Rules:
 - All dates ISO-8601 (yyyy-mm-dd). Resolve month-day dates like "Jun. 9" using the
   statement period's years (a period may span a year boundary).
-- All money values are positive numbers in dollars. "payments_credits" is the printed
-  "Payments and credits" as a positive number.
-- is_credit is true for CR lines (payments, transfers, refunds); those get category
-  "Payment/Credit".
-- Assign every non-credit entry the best-fitting category from the provided list.
-  Use "Other" only when nothing fits.
-- source is the card product + last 4 digits, e.g. "BMO Mastercard 4423".
+- All money values are positive numbers in dollars.
+- Money-in lines get category "Payment/Credit". On bank accounts, money-out lines
+  that pay the owner's own credit card (e.g. "TRSF" to a card, or an Online
+  Transfer whose reference contains a 16-digit card number) are ALSO
+  "Payment/Credit" — the spending is tracked on the card side. Other money-out
+  entries get the best-fitting category from the provided list ("Other" when
+  nothing fits).
+- source identifies the account: card product + last 4 digits ("BMO Mastercard
+  4423") or account product + account number suffix ("BMO Primary Chequing
+  3922-387").
 - Extracted text may run tokens together. A description can end in a partially
   masked account number (e.g. "TRSF FROM/DE ACCT/CPT 3776-XXXX-387") followed
   immediately by the amount ("480.96") — never absorb the amount's digits into
   the account number or vice versa. The amount is the full final monetary value
   on the line.
-- Do not invent, merge, or drop transactions.`;
+- Do not invent, merge, or drop transactions or accounts.`;
 
 const ENTRY_SCHEMA = {
   type: "object",
@@ -43,30 +66,41 @@ const ENTRY_SCHEMA = {
   },
 } as const;
 
-const EXTRACTION_JSON_SCHEMA = {
+const STATEMENT_SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: [
     "source",
+    "account_type",
     "statement_date",
     "period_start",
     "period_end",
-    "previous_balance",
-    "payments_credits",
-    "purchases_total",
-    "total_balance",
+    "opening_balance",
+    "money_in_total",
+    "money_out_total",
+    "closing_balance",
     "entries",
   ],
   properties: {
     source: { type: "string" },
+    account_type: { type: "string", enum: [...ACCOUNT_TYPES] },
     statement_date: { type: "string" },
     period_start: { type: "string" },
     period_end: { type: "string" },
-    previous_balance: { type: "number" },
-    payments_credits: { type: "number" },
-    purchases_total: { type: "number" },
-    total_balance: { type: "number" },
+    opening_balance: { type: "number" },
+    money_in_total: { type: "number" },
+    money_out_total: { type: "number" },
+    closing_balance: { type: "number" },
     entries: { type: "array", items: ENTRY_SCHEMA },
+  },
+} as const;
+
+const EXTRACTION_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["statements"],
+  properties: {
+    statements: { type: "array", items: STATEMENT_SCHEMA },
   },
 } as const;
 
@@ -100,59 +134,76 @@ function requireString(value: unknown, field: string): string {
   return value.trim();
 }
 
-// Pure + unit-tested: turns the model's snake_case JSON into ExtractedStatement,
-// rejecting anything malformed so bad data never reaches the DB.
-export function mapExtractionPayload(payload: unknown): ExtractedStatement {
+// Pure + unit-tested: turns the model's snake_case JSON into ExtractedStatement
+// objects (one per account section), rejecting anything malformed so bad data
+// never reaches the DB.
+export function mapExtractionPayload(payload: unknown): ExtractedStatement[] {
   if (typeof payload !== "object" || payload === null) {
     throw new ExtractionError("payload is not an object");
   }
-  const p = payload as Record<string, unknown>;
-
-  const rawEntries = p.entries;
-  if (!Array.isArray(rawEntries) || rawEntries.length === 0) {
-    throw new ExtractionError("no transactions extracted");
+  const rawStatements = (payload as Record<string, unknown>).statements;
+  if (!Array.isArray(rawStatements) || rawStatements.length === 0) {
+    throw new ExtractionError("no statements extracted");
   }
 
-  const entries: ExtractedEntry[] = rawEntries.map((raw, i) => {
-    const e = raw as Record<string, unknown>;
-    const category = e.category;
+  return rawStatements.map((rawStatement, si) => {
+    const p = rawStatement as Record<string, unknown>;
+    const at = `statements[${si}]`;
+
+    const accountType = p.account_type;
     if (
-      typeof category !== "string" ||
-      !(BUDGET_CATEGORIES as readonly string[]).includes(category)
+      typeof accountType !== "string" ||
+      !(ACCOUNT_TYPES as readonly string[]).includes(accountType)
     ) {
-      throw new ExtractionError(`entries[${i}].category is invalid: ${String(category)}`);
+      throw new ExtractionError(`${at}.account_type is invalid: ${String(accountType)}`);
     }
+
+    const rawEntries = p.entries;
+    if (!Array.isArray(rawEntries) || rawEntries.length === 0) {
+      throw new ExtractionError(`${at} has no transactions`);
+    }
+
+    const entries: ExtractedEntry[] = rawEntries.map((raw, i) => {
+      const e = raw as Record<string, unknown>;
+      const category = e.category;
+      if (
+        typeof category !== "string" ||
+        !(BUDGET_CATEGORIES as readonly string[]).includes(category)
+      ) {
+        throw new ExtractionError(`${at}.entries[${i}].category is invalid: ${String(category)}`);
+      }
+      return {
+        transDate: requireIsoDate(e.trans_date, `${at}.entries[${i}].trans_date`),
+        postingDate: requireIsoDate(e.posting_date, `${at}.entries[${i}].posting_date`),
+        description: requireString(e.description, `${at}.entries[${i}].description`),
+        amount: requireMagnitude(e.amount, `${at}.entries[${i}].amount`),
+        isCredit: e.is_credit === true,
+        category: category as BudgetCategory,
+      };
+    });
+
     return {
-      transDate: requireIsoDate(e.trans_date, `entries[${i}].trans_date`),
-      postingDate: requireIsoDate(e.posting_date, `entries[${i}].posting_date`),
-      description: requireString(e.description, `entries[${i}].description`),
-      amount: requireMagnitude(e.amount, `entries[${i}].amount`),
-      isCredit: e.is_credit === true,
-      category: category as BudgetCategory,
+      source: requireString(p.source, `${at}.source`),
+      accountType: accountType as BudgetAccountType,
+      statementDate: requireIsoDate(p.statement_date, `${at}.statement_date`),
+      periodStart: requireIsoDate(p.period_start, `${at}.period_start`),
+      periodEnd: requireIsoDate(p.period_end, `${at}.period_end`),
+      previousBalance: requireFiniteNumber(p.opening_balance, `${at}.opening_balance`),
+      paymentsCredits: requireMagnitude(p.money_in_total, `${at}.money_in_total`),
+      purchasesTotal: requireMagnitude(p.money_out_total, `${at}.money_out_total`),
+      totalBalance: requireFiniteNumber(p.closing_balance, `${at}.closing_balance`),
+      entries,
     };
   });
-
-  return {
-    source: requireString(p.source, "source"),
-    statementDate: requireIsoDate(p.statement_date, "statement_date"),
-    periodStart: requireIsoDate(p.period_start, "period_start"),
-    periodEnd: requireIsoDate(p.period_end, "period_end"),
-    previousBalance: requireFiniteNumber(p.previous_balance, "previous_balance"),
-    paymentsCredits: requireMagnitude(p.payments_credits, "payments_credits"),
-    purchasesTotal: requireMagnitude(p.purchases_total, "purchases_total"),
-    totalBalance: requireFiniteNumber(p.total_balance, "total_balance"),
-    entries,
-  };
 }
 
-export async function extractStatementFromText(text: string): Promise<ExtractedStatement> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new ExtractionError("OPENAI_API_KEY is not set");
-  }
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
+async function callModel(
+  client: OpenAI,
+  model: string,
+  text: string
+): Promise<ExtractedStatement[]> {
   const completion = await client.chat.completions.create({
-    model: MODEL,
+    model,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: text },
@@ -179,4 +230,32 @@ export async function extractStatementFromText(text: string): Promise<ExtractedS
     throw new ExtractionError("model returned invalid JSON");
   }
   return mapExtractionPayload(parsed);
+}
+
+const problemCount = (statements: ExtractedStatement[]): number =>
+  statements.reduce((sum, s) => sum + validateStatement(s).problems.length, 0);
+
+// Cheap-first ladder: nano handles simple card statements; when its output
+// fails the printed-totals validation (multi-column bank layouts trip it up),
+// retry once with the stronger model and keep whichever result validates better.
+export async function extractStatementsFromText(text: string): Promise<ExtractedStatement[]> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new ExtractionError("OPENAI_API_KEY is not set");
+  }
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  const first = await callModel(client, MODEL, text);
+  const firstProblems = problemCount(first);
+  if (firstProblems === 0) return first;
+
+  console.warn(
+    `Extraction via ${MODEL} has ${firstProblems} validation problem(s); escalating to ${FALLBACK_MODEL}`
+  );
+  try {
+    const second = await callModel(client, FALLBACK_MODEL, text);
+    return problemCount(second) < firstProblems ? second : first;
+  } catch (error) {
+    console.error(`Fallback extraction via ${FALLBACK_MODEL} failed`, error);
+    return first;
+  }
 }

@@ -8,6 +8,7 @@ import {
 
 const baseStatement = (): ExtractedStatement => ({
   source: "BMO Mastercard 4423",
+  accountType: "credit_card",
   statementDate: "2026-07-05",
   periodStart: "2026-06-06",
   periodEnd: "2026-07-05",
@@ -95,6 +96,41 @@ describe("validateStatement", () => {
     const result = validateStatement(s);
     expect(result.status).toBe("mismatch");
     expect(result.problems.some((p) => p.includes("balance"))).toBe(true);
+  });
+
+  it("validates a chequing statement with asset balance math (opening + in - out)", () => {
+    const s: ExtractedStatement = {
+      source: "BMO Primary Chequing 3922-387",
+      accountType: "chequing",
+      statementDate: "2026-06-05",
+      periodStart: "2026-05-08",
+      periodEnd: "2026-06-05",
+      previousBalance: 452.07,
+      paymentsCredits: 1211.72, // money in
+      purchasesTotal: 393.72, // money out
+      totalBalance: 1270.07,
+      entries: [
+        {
+          transDate: "2026-05-19",
+          postingDate: "2026-05-19",
+          description: "Mobile Cheque Deposit",
+          amount: 1211.72,
+          isCredit: true,
+          category: "Payment/Credit",
+        },
+        {
+          transDate: "2026-05-21",
+          postingDate: "2026-05-21",
+          description: "INTERAC e-Transfer Sent",
+          amount: 393.72,
+          isCredit: false,
+          category: "Other",
+        },
+      ],
+    };
+    expect(validateStatement(s).status).toBe("valid");
+    // The same numbers under card math would NOT balance:
+    expect(validateStatement({ ...s, accountType: "credit_card" }).status).toBe("mismatch");
   });
 
   it("flags a credits-sum mismatch (mis-read payment amount)", () => {
