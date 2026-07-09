@@ -316,7 +316,12 @@ export default function BudgetChartsSection({
     <div className={styles.stickyAxis} aria-hidden="true">
       <ResponsiveContainer width="100%" height={260}>
         <LineChart
-          data={[{ month: "", value: 0 }]}
+          // Two points: single-point lines force-render a dot even with
+          // dot={false}; with two, the invisible line stays truly invisible.
+          data={[
+            { month: "a", value: 0 },
+            { month: "b", value: 0 },
+          ]}
           margin={{ ...TIME_MARGIN, right: 0 }}
         >
           <Line
@@ -405,6 +410,7 @@ export default function BudgetChartsSection({
       <XAxis
         dataKey="month"
         height={30}
+        padding={{ left: 28, right: 16 }}
         fontSize={12}
         tick={{ fill: "var(--text-muted)" }}
         axisLine={{ stroke: "var(--card-edge)" }}
