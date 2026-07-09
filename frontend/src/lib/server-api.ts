@@ -26,7 +26,9 @@ async function dashboardFetch(path: string, init?: RequestInit): Promise<Respons
     cache: "no-store",
     headers: {
       "x-dashboard-key": key,
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(init?.body && !(init.body instanceof FormData)
+        ? { "Content-Type": "application/json" }
+        : {}),
     },
   });
 
@@ -95,4 +97,90 @@ export async function patchProjectImages(
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+// ----- Budgeting dashboard -----
+
+export type BudgetStatement = {
+  id: string;
+  source: string;
+  statementDate: string;
+  periodStart: string;
+  periodEnd: string;
+  previousBalance: number;
+  paymentsCredits: number;
+  purchasesTotal: number;
+  totalBalance: number;
+  validationStatus: "valid" | "mismatch";
+  extractedPurchasesSum: number;
+  uploadedAt: string;
+  entryCount?: number;
+};
+
+export type BudgetEntry = {
+  id: string;
+  statementId: string;
+  transDate: string;
+  postingDate: string;
+  description: string;
+  amount: number;
+  isCredit: boolean;
+  category: string;
+};
+
+export type BudgetSummary = {
+  latest: BudgetStatement | null;
+  statementCount: number;
+  categoryTotals: Array<{ category: string; total: number }>;
+  monthlyByCategory: Array<{ month: string; category: string; total: number }>;
+};
+
+export type BudgetUploadResult = {
+  statement: BudgetStatement;
+  entries: BudgetEntry[];
+  problems: string[];
+};
+
+export async function uploadBudgetStatement(fd: FormData): Promise<BudgetUploadResult> {
+  const res = await dashboardFetch("/budget/statements", { method: "POST", body: fd });
+  return res.json();
+}
+
+export async function listBudgetStatements(): Promise<BudgetStatement[]> {
+  const res = await dashboardFetch("/budget/statements");
+  return res.json();
+}
+
+export async function listBudgetEntries(filters?: {
+  category?: string;
+  from?: string;
+  to?: string;
+}): Promise<BudgetEntry[]> {
+  const params = new URLSearchParams();
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.from) params.set("from", filters.from);
+  if (filters?.to) params.set("to", filters.to);
+  const qs = params.size ? `?${params.toString()}` : "";
+  const res = await dashboardFetch(`/budget/entries${qs}`);
+  return res.json();
+}
+
+export async function patchBudgetEntryCategory(
+  id: string,
+  category: string
+): Promise<BudgetEntry> {
+  const res = await dashboardFetch(`/budget/entries/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ category }),
+  });
+  return res.json();
+}
+
+export async function deleteBudgetStatement(id: string): Promise<void> {
+  await dashboardFetch(`/budget/statements/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function getBudgetSummary(): Promise<BudgetSummary> {
+  const res = await dashboardFetch("/budget/summary");
+  return res.json();
 }
