@@ -139,7 +139,12 @@ export type BudgetSummary = {
   latestSavings: BudgetStatement | null;
   statementCount: number;
   categoryTotals: Array<{ category: string; total: number }>;
-  cardBills: Array<{ month: string; total: number }>;
+  cardBills: Array<{
+    month: string;
+    total: number;
+    chequing: number | null;
+    savings: number | null;
+  }>;
   monthlyByCategory: Array<{ month: string; category: string; total: number }>;
 };
 

@@ -21,11 +21,57 @@ import styles from "./Budgeting.module.css";
 type CategoryTotal = { category: string; total: number };
 type MonthlyByCategory = { month: string; category: string; total: number };
 
+type CardBill = {
+  month: string;
+  total: number;
+  chequing: number | null;
+  savings: number | null;
+};
+
 type Props = {
   categoryTotals: CategoryTotal[];
   monthlyByCategory: MonthlyByCategory[];
-  cardBills: Array<{ month: string; total: number }>;
+  cardBills: CardBill[];
 };
+
+const tooltipContentStyle = {
+  background: "var(--card)",
+  border: "1px solid var(--card-edge)",
+  borderRadius: 8,
+  padding: "0.5rem 0.75rem",
+  fontSize: "0.75rem",
+  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+};
+const tooltipItemStyle = { color: "var(--text-main)", margin: 0 };
+const tooltipLabelStyle = { color: "var(--text-muted)", margin: 0 };
+
+// Card-bills hover: the bill total plus that month's bank balances.
+function BillTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: CardBill }>;
+  label?: string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const row = payload[0].payload;
+  const money = (n: number) =>
+    n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
+  return (
+    <div style={tooltipContentStyle}>
+      <p style={tooltipLabelStyle}>{formatMonth(String(label ?? row.month))}</p>
+      <p style={tooltipItemStyle}>Bill total: {money(row.total)}</p>
+      <p style={tooltipItemStyle}>
+        Chequing: {row.chequing === null ? "—" : money(row.chequing)}
+      </p>
+      <p style={tooltipItemStyle}>
+        Savings: {row.savings === null ? "—" : money(row.savings)}
+      </p>
+    </div>
+  );
+}
 
 const OTHER = "Other";
 
@@ -143,19 +189,58 @@ export default function BudgetChartsSection({
     );
   }
 
-  const tooltipContentStyle = {
-    background: "var(--card)",
-    border: "1px solid var(--card-edge)",
-    borderRadius: 8,
-    fontSize: "0.75rem",
-    fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-  };
-  const tooltipItemStyle = { color: "var(--text-main)" };
-  const tooltipLabelStyle = { color: "var(--text-muted)" };
 
   // Wider than 5 months → the time charts scroll horizontally.
   const timeChartMinWidth = (count: number) =>
     count > 5 ? `${count * 90}px` : undefined;
+
+  // The Y axis lives in its own pinned chart (an SVG axis can't be sticky),
+  // so both panes must share one explicit domain and tick set.
+  const niceCeil = (v: number): number => {
+    if (v <= 0) return 100;
+    const pow = 10 ** Math.floor(Math.log10(v));
+    for (const m of [1, 2, 2.5, 5, 10]) {
+      if (v <= m * pow) return m * pow;
+    }
+    return 10 * pow;
+  };
+  const barMax = niceCeil(
+    Math.max(
+      0,
+      ...barData.map((row) =>
+        Object.entries(row).reduce(
+          (sum, [k, v]) => (k === "month" ? sum : sum + Number(v)),
+          0
+        )
+      )
+    )
+  );
+  const lineMax = niceCeil(Math.max(0, ...cardBills.map((b) => b.total)));
+  const ticksFor = (max: number) =>
+    [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * max * 100) / 100);
+
+  const TIME_MARGIN = { top: 5, right: 12, bottom: 5, left: 0 };
+  const dollars = (v: number) => `$${v.toLocaleString("en-CA")}`;
+
+  // Pinned left pane: renders only the value axis, on the same scale.
+  const stickyYAxis = (max: number) => (
+    <div className={styles.stickyAxis} aria-hidden="true">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={[{ month: "" }]} margin={TIME_MARGIN}>
+          <YAxis
+            domain={[0, max]}
+            ticks={ticksFor(max)}
+            fontSize={12}
+            tick={{ fill: "var(--text-muted)" }}
+            axisLine={{ stroke: "var(--card-edge)" }}
+            tickLine={{ stroke: "var(--card-edge)" }}
+            tickFormatter={dollars}
+          />
+          <XAxis dataKey="month" height={30} tick={false} axisLine={false} tickLine={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
 
   return (
     <section className={styles.chartsGrid} aria-label="Spending charts">
@@ -220,29 +305,26 @@ export default function BudgetChartsSection({
 
       <div className={styles.card}>
         <h2 className={styles.cardHeading}>Monthly spending</h2>
-        <div className={styles.chartScroll}>
-          <div
-            className={styles.chartBox}
-            style={{ minWidth: timeChartMinWidth(barData.length) }}
-          >
+        <div className={styles.stickyChart}>
+          {stickyYAxis(barMax)}
+          <div className={styles.chartScroll}>
+            <div
+              className={styles.chartBox}
+              style={{ minWidth: timeChartMinWidth(barData.length) }}
+            >
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={barData}>
+            <BarChart data={barData} margin={TIME_MARGIN}>
               <CartesianGrid stroke="var(--card-edge)" vertical={false} />
               <XAxis
                 dataKey="month"
+                height={30}
                 fontSize={12}
                 tick={{ fill: "var(--text-muted)" }}
                 axisLine={{ stroke: "var(--card-edge)" }}
                 tickLine={{ stroke: "var(--card-edge)" }}
                 tickFormatter={(m) => formatMonth(String(m))}
               />
-              <YAxis
-                fontSize={12}
-                tick={{ fill: "var(--text-muted)" }}
-                axisLine={{ stroke: "var(--card-edge)" }}
-                tickLine={{ stroke: "var(--card-edge)" }}
-                tickFormatter={(v: number) => `$${v.toLocaleString("en-CA")}`}
-              />
+              <YAxis hide domain={[0, barMax]} ticks={ticksFor(barMax)} />
               <Tooltip
                 formatter={(value) => money(Number(value))}
                 labelFormatter={(label) => formatMonth(String(label))}
@@ -263,6 +345,7 @@ export default function BudgetChartsSection({
               ))}
             </BarChart>
           </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>
@@ -270,37 +353,28 @@ export default function BudgetChartsSection({
       {cardBills.length > 0 && (
         <div className={styles.card}>
           <h2 className={styles.cardHeading}>Card bills by month</h2>
-          <div className={styles.chartScroll}>
-            <div
-              className={styles.chartBox}
-              style={{ minWidth: timeChartMinWidth(cardBills.length) }}
-            >
+          <div className={styles.stickyChart}>
+            {stickyYAxis(lineMax)}
+            <div className={styles.chartScroll}>
+              <div
+                className={styles.chartBox}
+                style={{ minWidth: timeChartMinWidth(cardBills.length) }}
+              >
             <ResponsiveContainer width="100%" height={260}>
               {/* Single series: the title names it, so no legend (dataviz rule). */}
-              <LineChart data={cardBills}>
+              <LineChart data={cardBills} margin={TIME_MARGIN}>
                 <CartesianGrid stroke="var(--card-edge)" vertical={false} />
                 <XAxis
                   dataKey="month"
+                  height={30}
                   fontSize={12}
                   tick={{ fill: "var(--text-muted)" }}
                   axisLine={{ stroke: "var(--card-edge)" }}
                   tickLine={{ stroke: "var(--card-edge)" }}
                   tickFormatter={(m) => formatMonth(String(m))}
                 />
-                <YAxis
-                  fontSize={12}
-                  tick={{ fill: "var(--text-muted)" }}
-                  axisLine={{ stroke: "var(--card-edge)" }}
-                  tickLine={{ stroke: "var(--card-edge)" }}
-                  tickFormatter={(v: number) => `$${v.toLocaleString("en-CA")}`}
-                />
-                <Tooltip
-                  formatter={(value) => [money(Number(value)), "Bill total"]}
-                  labelFormatter={(label) => formatMonth(String(label))}
-                  contentStyle={tooltipContentStyle}
-                  itemStyle={tooltipItemStyle}
-                  labelStyle={tooltipLabelStyle}
-                />
+                <YAxis hide domain={[0, lineMax]} ticks={ticksFor(lineMax)} />
+                <Tooltip content={<BillTooltip />} />
                 <Line
                   type="monotone"
                   dataKey="total"
@@ -311,6 +385,7 @@ export default function BudgetChartsSection({
                 />
               </LineChart>
             </ResponsiveContainer>
+              </div>
             </div>
           </div>
         </div>

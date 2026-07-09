@@ -400,9 +400,21 @@
   min-height: 260px;
 }
 
-/* Time charts wider than 5 months scroll sideways inside their card. */
+/* Time charts wider than 5 months scroll sideways inside their card; the
+   value axis sits in a pinned pane to the left of the scroll area. */
+.stickyChart {
+  display: flex;
+  align-items: stretch;
+}
+
+.stickyAxis {
+  flex: 0 0 64px;
+}
+
 .chartScroll {
   overflow-x: auto;
+  flex: 1;
+  min-width: 0;
 }
 
 /* ----- Scrollbars: thin, theme-colored, rounded ----- */

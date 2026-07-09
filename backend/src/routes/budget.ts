@@ -659,15 +659,23 @@ router.get("/summary", async (_req, res) => {
       GROUP BY category
       ORDER BY total_cents DESC
     `;
-    // One point per card statement: the printed bill total for that month.
+    // One point per card-bill month, with that month's bank balances for the
+    // hover readout (null when no bank statement landed that month).
     const cardBills = await prisma.$queryRaw<
-      Array<{ month: string; total_cents: number }>
+      Array<{
+        month: string;
+        total_cents: number;
+        chequing_cents: number | null;
+        savings_cents: number | null;
+      }>
     >`
       SELECT to_char(statement_date, 'YYYY-MM') AS month,
-             SUM(total_balance_cents)::int AS total_cents
+             SUM(total_balance_cents) FILTER (WHERE account_type = 'credit_card')::int AS total_cents,
+             SUM(total_balance_cents) FILTER (WHERE account_type = 'chequing' AND origin = 'pdf')::int AS chequing_cents,
+             SUM(total_balance_cents) FILTER (WHERE account_type = 'savings' AND origin = 'pdf')::int AS savings_cents
       FROM budget_statements
-      WHERE account_type = 'credit_card'
       GROUP BY 1
+      HAVING SUM(total_balance_cents) FILTER (WHERE account_type = 'credit_card') IS NOT NULL
       ORDER BY 1 ASC
     `;
 
@@ -691,7 +699,12 @@ router.get("/summary", async (_req, res) => {
         category: r.category,
         total: r.total_cents / 100,
       })),
-      cardBills: cardBills.map((r) => ({ month: r.month, total: r.total_cents / 100 })),
+      cardBills: cardBills.map((r) => ({
+        month: r.month,
+        total: r.total_cents / 100,
+        chequing: r.chequing_cents === null ? null : r.chequing_cents / 100,
+        savings: r.savings_cents === null ? null : r.savings_cents / 100,
+      })),
       monthlyByCategory: monthlyByCategory.map((r) => ({
         month: r.month,
         category: r.category,
