@@ -11,6 +11,7 @@ import styles from "./Budgeting.module.css";
 type Props = { entries: BudgetEntry[] };
 
 type Filters = {
+  search: string; // case-insensitive description match
   category: string; // "All" or a category name
   from: string; // ISO yyyy-mm-dd or ""
   to: string;
@@ -18,7 +19,14 @@ type Filters = {
   max: string;
 };
 
-const NO_FILTERS: Filters = { category: "All", from: "", to: "", min: "", max: "" };
+const NO_FILTERS: Filters = {
+  search: "",
+  category: "All",
+  from: "",
+  to: "",
+  min: "",
+  max: "",
+};
 const PAGE_SIZE = 15;
 
 const money = (n: number) =>
@@ -38,6 +46,7 @@ export default function BudgetEntriesTable({ entries }: Props) {
   };
 
   const activeCount = [
+    filters.search.trim() !== "",
     filters.category !== "All",
     filters.from !== "",
     filters.to !== "",
@@ -45,10 +54,23 @@ export default function BudgetEntriesTable({ entries }: Props) {
     filters.max !== "",
   ].filter(Boolean).length;
 
+  // Click-to-edit descriptions. Local overrides keep the new name visible
+  // until the server refresh delivers the updated row.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [nameOverrides, setNameOverrides] = useState<Record<string, string>>({});
+
+  const displayName = (e: BudgetEntry) => nameOverrides[e.id] ?? e.description;
+
   const visible = useMemo(() => {
     const min = filters.min === "" ? null : Number(filters.min);
     const max = filters.max === "" ? null : Number(filters.max);
+    const search = filters.search.trim().toLowerCase();
     return entries.filter((e) => {
+      if (search) {
+        const name = (nameOverrides[e.id] ?? e.description).toLowerCase();
+        if (!name.includes(search)) return false;
+      }
       if (filters.category !== "All" && e.category !== filters.category) return false;
       if (filters.from && e.transDate < filters.from) return false;
       if (filters.to && e.transDate > filters.to) return false;
@@ -56,7 +78,7 @@ export default function BudgetEntriesTable({ entries }: Props) {
       if (max !== null && e.amount > max) return false;
       return true;
     });
-  }, [entries, filters]);
+  }, [entries, filters, nameOverrides]);
 
   const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
@@ -72,14 +94,6 @@ export default function BudgetEntriesTable({ entries }: Props) {
       if (!res.ok) setError(res.error ?? "Failed to update category");
     });
   };
-
-  // Click-to-edit descriptions. Local overrides keep the new name visible
-  // until the server refresh delivers the updated row.
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const [nameOverrides, setNameOverrides] = useState<Record<string, string>>({});
-
-  const displayName = (e: BudgetEntry) => nameOverrides[e.id] ?? e.description;
 
   const startNameEdit = (e: BudgetEntry) => {
     setEditingId(e.id);
@@ -130,6 +144,16 @@ export default function BudgetEntriesTable({ entries }: Props) {
 
       {panelOpen && (
         <div className={styles.filterPanel}>
+          <label className={styles.filterField}>
+            <span className={styles.filterLabel}>Search</span>
+            <input
+              type="text"
+              placeholder="description…"
+              className={styles.select}
+              value={filters.search}
+              onChange={(e) => set({ search: e.target.value })}
+            />
+          </label>
           <label className={styles.filterField}>
             <span className={styles.filterLabel}>Type</span>
             <select
