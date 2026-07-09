@@ -157,6 +157,7 @@ export type BudgetUploadResult = {
     entries: BudgetEntry[];
     problems: string[];
     skippedDuplicates: number;
+    learnedCategories: number;
   }>;
 };
 

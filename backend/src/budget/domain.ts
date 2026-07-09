@@ -58,6 +58,16 @@ export type ValidationResult = {
 
 export const toCents = (dollars: number): number => Math.round(dollars * 100);
 
+// Merchant identity across statements: letters only, collapsed whitespace.
+// Must stay in sync with the SQL variant used by subscription detection.
+export function normalizeMerchant(description: string): string {
+  return description
+    .toUpperCase()
+    .replace(/[^A-Z ]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const TOLERANCE_CENTS = 1;
 
 // Owner's card-total rule: total balance = all charges minus all credits,

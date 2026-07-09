@@ -3,6 +3,7 @@ import {
   allCreditsSumCents,
   BUDGET_CATEGORIES,
   computedCardTotalCents,
+  normalizeMerchant,
   toCents,
   validateStatement,
   type ExtractedStatement,
@@ -59,6 +60,17 @@ describe("toCents", () => {
     expect(toCents(973.05)).toBe(97305);
     expect(toCents(0.1 + 0.2)).toBe(30);
     expect(toCents(0)).toBe(0);
+  });
+});
+
+describe("normalizeMerchant", () => {
+  it("strips numbers, symbols, and repeated spaces", () => {
+    expect(normalizeMerchant("TIM HORTONS #2207   WOODBRIDGE ON")).toBe(
+      "TIM HORTONS WOODBRIDGE ON"
+    );
+    expect(normalizeMerchant("GOOGLE *Snapchat  HALIFAX NS")).toBe(
+      "GOOGLE SNAPCHAT HALIFAX NS"
+    );
   });
 });
 

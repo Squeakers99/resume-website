@@ -184,6 +184,8 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
                           ` — ${r.skippedDuplicates} duplicate${
                             r.skippedDuplicates === 1 ? "" : "s"
                           } already on file, skipped`}
+                        {r.learnedCategories > 0 &&
+                          ` — ${r.learnedCategories} categorized from your history`}
                         {r.statement.validationStatus === "mismatch" && (
                           <strong> — totals mismatch, review below</strong>
                         )}

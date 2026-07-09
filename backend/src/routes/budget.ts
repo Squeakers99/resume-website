@@ -7,6 +7,7 @@ import pdfParse from "pdf-parse";
 import { prisma } from "../db/prisma";
 import {
   BUDGET_CATEGORIES,
+  normalizeMerchant,
   toCents,
   validateStatement,
   type BudgetAccountType,
@@ -332,6 +333,40 @@ router.post("/statements", uploadPdf, async (req, res) => {
       }
     }
 
+    // Learn from past bills: the most recent category (and subscription flag)
+    // per known merchant overrides the model's guess, so the owner's manual
+    // corrections stick across future uploads.
+    const history = await prisma.$queryRaw<
+      Array<{ norm: string; is_credit: boolean; category: string; recurring: boolean }>
+    >`
+      SELECT DISTINCT ON (norm, is_credit) norm, is_credit, category, recurring
+      FROM (
+        SELECT trim(regexp_replace(regexp_replace(upper(description), '[^A-Z ]+', '', 'g'), '\\s+', ' ', 'g')) AS norm,
+               is_credit, category, recurring, trans_date, created_at
+        FROM budget_entries
+      ) t
+      WHERE norm <> ''
+      ORDER BY norm, is_credit, trans_date DESC, created_at DESC
+    `;
+    const knownMerchants = new Map(
+      history.map((h) => [`${h.norm}|${h.is_credit}`, h])
+    );
+    const learnedFor = (e: { description: string; isCredit: boolean }) =>
+      knownMerchants.get(`${normalizeMerchant(e.description)}|${e.isCredit}`);
+
+    const learnedCounts = extracted.map((s) => {
+      let learned = 0;
+      s.entries = s.entries.map((e) => {
+        const known = learnedFor(e);
+        if (!known || !(BUDGET_CATEGORIES as readonly string[]).includes(known.category)) {
+          return e;
+        }
+        if (known.category !== e.category) learned++;
+        return { ...e, category: known.category as BudgetCategory };
+      });
+      return learned;
+    });
+
     const validations = extracted.map(validateStatement);
 
     const filename = req.file.originalname || "statement.pdf";
@@ -401,11 +436,11 @@ router.post("/statements", uploadPdf, async (req, res) => {
           const rows = await tx.$queryRaw<EntryRow[]>`
             INSERT INTO budget_entries (
               statement_id, trans_date, posting_date, description,
-              amount_cents, is_credit, category, position
+              amount_cents, is_credit, category, position, recurring
             ) VALUES (
               ${statement.id}, ${e.transDate}::date, ${e.postingDate}::date,
               ${e.description}, ${toCents(e.amount)}, ${e.isCredit}, ${e.category},
-              ${position}
+              ${position}, ${learnedFor(e)?.recurring ?? false}
             )
             RETURNING id, statement_id, trans_date, posting_date, description,
                       amount_cents, is_credit, category, recurring
@@ -424,6 +459,7 @@ router.post("/statements", uploadPdf, async (req, res) => {
         entries: r.entries.map(toEntry),
         problems: validations[i].problems,
         skippedDuplicates: r.skippedDuplicates,
+        learnedCategories: learnedCounts[i],
       })),
     });
   } catch (error) {

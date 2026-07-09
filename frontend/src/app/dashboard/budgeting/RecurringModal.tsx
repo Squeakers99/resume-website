@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { BudgetEntry } from "@/lib/server-api";
-import { detectRecurringAction, listRecurringAction, updateEntryAction } from "./actions";
+import { detectRecurringAction, listRecurringAction } from "./actions";
 import { formatDay } from "./formatDate";
 import styles from "./Budgeting.module.css";
 
@@ -56,18 +56,6 @@ export default function RecurringModal({ onClose }: Props) {
     });
   };
 
-  const onRemove = (entry: BudgetEntry) => {
-    setError(null);
-    startTransition(async () => {
-      const res = await updateEntryAction(entry.id, { recurring: false });
-      if (!res.ok) {
-        setError(res.error ?? "Failed to update");
-        return;
-      }
-      setEntries((prev) => prev?.filter((e) => e.id !== entry.id) ?? prev);
-    });
-  };
-
   const groups = useMemo(() => {
     if (!entries) return [];
     const map = new Map<string, BudgetEntry[]>();
@@ -97,14 +85,7 @@ export default function RecurringModal({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.modalHeader}>
-          <div>
-            <h2 className={styles.cardHeading}>Subscriptions</h2>
-            <p className={styles.mutedText}>
-              AI keeps only true subscriptions (streaming, memberships, software)
-              — habitual purchases are excluded. Detection only adds; your manual
-              changes stick.
-            </p>
-          </div>
+          <h2 className={styles.cardHeading}>Subscriptions</h2>
           <span className={styles.statementActions}>
             <button
               type="button"
@@ -144,18 +125,7 @@ export default function RecurringModal({ onClose }: Props) {
                     <span>
                       {formatDay(e.transDate)} · {e.description} · {e.category}
                     </span>
-                    <span className={styles.statementActions}>
-                      <span className={styles.amountCol}>{money(e.amount)}</span>
-                      <button
-                        type="button"
-                        className={styles.btnDanger}
-                        disabled={isPending}
-                        onClick={() => onRemove(e)}
-                        aria-label={`Remove ${e.description} from recurring`}
-                      >
-                        Remove
-                      </button>
-                    </span>
+                    <span className={styles.amountCol}>{money(e.amount)}</span>
                   </li>
                 ))}
               </ul>
