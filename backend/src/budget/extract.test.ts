@@ -74,6 +74,13 @@ describe("mapExtractionPayload", () => {
     expect(() => mapExtractionPayload(p)).toThrow(ExtractionError);
   });
 
+  it("falls back to trans_date when posting_date is empty (single-date bank lines)", () => {
+    const p = goodPayload();
+    (p.statements[1].entries[0] as { posting_date: string }).posting_date = "";
+    const statements = mapExtractionPayload(p);
+    expect(statements[1].entries[0].postingDate).toBe("2026-05-19");
+  });
+
   it("rejects non-ISO dates", () => {
     const p = goodPayload();
     p.statements[0].statement_date = "Jul. 5, 2026";

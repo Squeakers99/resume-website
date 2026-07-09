@@ -30,16 +30,24 @@ Account types:
   closing_balance). is_credit is true for "Amounts added" lines (deposits,
   e-Transfers received, direct deposits), false for "Amounts deducted" lines.
   "Opening balance" and "Closing totals" rows are NOT transactions — skip them.
-  The running Balance column is never an amount.
+  The running Balance column is never an amount. Bank statements have a single
+  date per line — use it for BOTH trans_date and posting_date.
 
 Rules:
 - All dates ISO-8601 (yyyy-mm-dd). Resolve month-day dates like "Jun. 9" using the
   statement period's years (a period may span a year boundary).
 - All money values are positive numbers in dollars.
-- Money-in lines get category "Payment/Credit". On bank accounts, money-out lines
-  that pay the owner's own credit card (e.g. "TRSF" to a card, or an Online
-  Transfer whose reference contains a 16-digit card number) are ALSO
-  "Payment/Credit" — the spending is tracked on the card side. Other money-out
+- Category rules for money-in lines:
+  - Employer payroll deposits are "Income". The reference "13139026" is the
+    owner's employer — any line containing it is ALWAYS "Income", as are
+    "Direct Deposit ... PAY/PAY" salary lines.
+  - Payments INTO a credit-card account (card-side CR lines such as "PAYMENT
+    RECEIVED" or "TRSF FROM/DE ACCT/CPT ...") are "Card Payment".
+  - All other money-in (e-Transfers received, refunds, interest earned) is
+    "Payment/Credit".
+- Bank-side money-out lines that pay the owner's own credit card (a "TRSF" to a
+  card, or an Online Transfer whose reference contains a 16-digit card number)
+  are "Card Payment" — the spending is tracked on the card side. Other money-out
   entries get the best-fitting category from the provided list ("Other" when
   nothing fits).
 - source identifies the account: card product + last 4 digits ("BMO Mastercard
@@ -172,9 +180,16 @@ export function mapExtractionPayload(payload: unknown): ExtractedStatement[] {
       ) {
         throw new ExtractionError(`${at}.entries[${i}].category is invalid: ${String(category)}`);
       }
+      const transDate = requireIsoDate(e.trans_date, `${at}.entries[${i}].trans_date`);
+      // Bank statements have one date per line; models sometimes leave
+      // posting_date empty there — fall back to the transaction date.
+      const postingDate =
+        typeof e.posting_date === "string" && ISO_DATE.test(e.posting_date)
+          ? e.posting_date
+          : transDate;
       return {
-        transDate: requireIsoDate(e.trans_date, `${at}.entries[${i}].trans_date`),
-        postingDate: requireIsoDate(e.posting_date, `${at}.entries[${i}].posting_date`),
+        transDate,
+        postingDate,
         description: requireString(e.description, `${at}.entries[${i}].description`),
         amount: requireMagnitude(e.amount, `${at}.entries[${i}].amount`),
         isCredit: e.is_credit === true,

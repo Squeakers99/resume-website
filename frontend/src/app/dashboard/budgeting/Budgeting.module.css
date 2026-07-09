@@ -235,7 +235,35 @@
   white-space: nowrap;
 }
 
-.creditRow td {
+/* Credits are denoted by color alone (owner preference: red, no minus sign);
+   debit rows keep the default ink. */
+.creditAmount {
+  color: #d64545;
+}
+
+/* ----- Transactions filter panel ----- */
+.filterPanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 96%, var(--bg-1));
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filterLabel {
+  font-size: 0.65rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
 }
 

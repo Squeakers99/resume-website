@@ -61,10 +61,12 @@ describe("toCents", () => {
 });
 
 describe("BUDGET_CATEGORIES", () => {
-  it("contains the fixed set including Payment/Credit and Other", () => {
+  it("contains the fixed set including the special credit categories", () => {
     expect(BUDGET_CATEGORIES).toContain("Payment/Credit");
+    expect(BUDGET_CATEGORIES).toContain("Income");
+    expect(BUDGET_CATEGORIES).toContain("Card Payment");
     expect(BUDGET_CATEGORIES).toContain("Other");
-    expect(BUDGET_CATEGORIES).toHaveLength(12);
+    expect(BUDGET_CATEGORIES).toHaveLength(14);
   });
 });
 

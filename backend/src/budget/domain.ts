@@ -13,6 +13,8 @@ export const BUDGET_CATEGORIES = [
   "Health",
   "Travel",
   "Other",
+  "Income",
+  "Card Payment",
   "Payment/Credit",
 ] as const;
 

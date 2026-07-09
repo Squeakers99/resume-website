@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { BudgetEntry } from "@/lib/server-api";
 import { BUDGET_CATEGORIES } from "./budgetCategories";
 import { formatDay } from "./formatDate";
@@ -9,16 +9,47 @@ import styles from "./Budgeting.module.css";
 
 type Props = { entries: BudgetEntry[] };
 
+type Filters = {
+  category: string; // "All" or a category name
+  from: string; // ISO yyyy-mm-dd or ""
+  to: string;
+  min: string; // dollars or ""
+  max: string;
+};
+
+const NO_FILTERS: Filters = { category: "All", from: "", to: "", min: "", max: "" };
+
 const money = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 export default function BudgetEntriesTable({ entries }: Props) {
-  const [filter, setFilter] = useState<string>("All");
+  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const visible =
-    filter === "All" ? entries : entries.filter((e) => e.category === filter);
+  const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
+
+  const activeCount = [
+    filters.category !== "All",
+    filters.from !== "",
+    filters.to !== "",
+    filters.min !== "",
+    filters.max !== "",
+  ].filter(Boolean).length;
+
+  const visible = useMemo(() => {
+    const min = filters.min === "" ? null : Number(filters.min);
+    const max = filters.max === "" ? null : Number(filters.max);
+    return entries.filter((e) => {
+      if (filters.category !== "All" && e.category !== filters.category) return false;
+      if (filters.from && e.transDate < filters.from) return false;
+      if (filters.to && e.transDate > filters.to) return false;
+      if (min !== null && e.amount < min) return false;
+      if (max !== null && e.amount > max) return false;
+      return true;
+    });
+  }, [entries, filters]);
 
   const onCategoryChange = (id: string, category: string) => {
     setError(null);
@@ -32,18 +63,83 @@ export default function BudgetEntriesTable({ entries }: Props) {
     <section className={styles.card} aria-label="Transactions">
       <div className={styles.tableHeader}>
         <h2 className={styles.cardHeading}>Transactions</h2>
-        <select
-          className={styles.select}
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          aria-label="Filter by category"
+        <button
+          type="button"
+          className={styles.btn}
+          aria-expanded={panelOpen}
+          onClick={() => setPanelOpen((v) => !v)}
         >
-          <option>All</option>
-          {BUDGET_CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
+          Filters{activeCount > 0 ? ` (${activeCount})` : ""}
+        </button>
       </div>
+
+      {panelOpen && (
+        <div className={styles.filterPanel}>
+          <label className={styles.filterField}>
+            <span className={styles.filterLabel}>Type</span>
+            <select
+              className={styles.select}
+              value={filters.category}
+              onChange={(e) => set({ category: e.target.value })}
+            >
+              <option>All</option>
+              {BUDGET_CATEGORIES.filter((c) => c !== "Card Payment").map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.filterField}>
+            <span className={styles.filterLabel}>From</span>
+            <input
+              type="date"
+              className={styles.select}
+              value={filters.from}
+              onChange={(e) => set({ from: e.target.value })}
+            />
+          </label>
+          <label className={styles.filterField}>
+            <span className={styles.filterLabel}>To</span>
+            <input
+              type="date"
+              className={styles.select}
+              value={filters.to}
+              onChange={(e) => set({ to: e.target.value })}
+            />
+          </label>
+          <label className={styles.filterField}>
+            <span className={styles.filterLabel}>Min $</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              className={styles.select}
+              value={filters.min}
+              onChange={(e) => set({ min: e.target.value })}
+            />
+          </label>
+          <label className={styles.filterField}>
+            <span className={styles.filterLabel}>Max $</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              className={styles.select}
+              value={filters.max}
+              onChange={(e) => set({ max: e.target.value })}
+            />
+          </label>
+          <button
+            type="button"
+            className={styles.btn}
+            disabled={activeCount === 0}
+            onClick={() => setFilters(NO_FILTERS)}
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {error && (
         <p className={styles.errorText} role="alert">
@@ -66,11 +162,15 @@ export default function BudgetEntriesTable({ entries }: Props) {
             </thead>
             <tbody>
               {visible.map((e) => (
-                <tr key={e.id} className={e.isCredit ? styles.creditRow : ""}>
+                <tr key={e.id}>
                   <td>{formatDay(e.transDate)}</td>
                   <td className={styles.descCell}>{e.description}</td>
-                  <td className={styles.amountCol}>
-                    {e.isCredit ? `−${money(e.amount)}` : money(e.amount)}
+                  <td
+                    className={`${styles.amountCol} ${
+                      e.isCredit ? styles.creditAmount : ""
+                    }`}
+                  >
+                    {money(e.amount)}
                   </td>
                   <td>
                     <select

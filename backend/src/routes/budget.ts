@@ -339,7 +339,8 @@ router.get("/entries", async (req, res) => {
       SELECT id, statement_id, trans_date, posting_date, description,
              amount_cents, is_credit, category
       FROM budget_entries
-      WHERE (${category}::text IS NULL OR category = ${category})
+      WHERE category <> 'Card Payment'
+        AND (${category}::text IS NULL OR category = ${category})
         AND (${from}::date IS NULL OR trans_date >= ${from}::date)
         AND (${to}::date IS NULL OR trans_date <= ${to}::date)
       ORDER BY trans_date DESC, posting_date DESC
@@ -437,7 +438,7 @@ router.get("/summary", async (_req, res) => {
     >`
       SELECT category, SUM(amount_cents)::int AS total_cents
       FROM budget_entries
-      WHERE NOT is_credit AND category <> 'Payment/Credit'
+      WHERE NOT is_credit AND category NOT IN ('Payment/Credit', 'Card Payment')
       GROUP BY category
       ORDER BY total_cents DESC
     `;
@@ -447,7 +448,7 @@ router.get("/summary", async (_req, res) => {
       SELECT to_char(date_trunc('month', trans_date), 'YYYY-MM') AS month,
              category, SUM(amount_cents)::int AS total_cents
       FROM budget_entries
-      WHERE NOT is_credit AND category <> 'Payment/Credit'
+      WHERE NOT is_credit AND category NOT IN ('Payment/Credit', 'Card Payment')
       GROUP BY 1, 2
       ORDER BY 1 ASC
     `;
