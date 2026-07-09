@@ -101,9 +101,13 @@ export async function patchProjectImages(
 
 // ----- Budgeting dashboard -----
 
+export type BudgetAccountType = "credit_card" | "chequing" | "savings";
+
 export type BudgetStatement = {
   id: string;
   source: string;
+  accountType: BudgetAccountType;
+  documentId: string | null;
   statementDate: string;
   periodStart: string;
   periodEnd: string;
@@ -129,16 +133,22 @@ export type BudgetEntry = {
 };
 
 export type BudgetSummary = {
-  latest: BudgetStatement | null;
+  latestCard: BudgetStatement | null;
+  latestChequing: BudgetStatement | null;
+  latestSavings: BudgetStatement | null;
   statementCount: number;
   categoryTotals: Array<{ category: string; total: number }>;
   monthlyByCategory: Array<{ month: string; category: string; total: number }>;
 };
 
+// One uploaded PDF can contain several account sections.
 export type BudgetUploadResult = {
-  statement: BudgetStatement;
-  entries: BudgetEntry[];
-  problems: string[];
+  document: { id: string; filename: string; s3Key: string };
+  results: Array<{
+    statement: BudgetStatement;
+    entries: BudgetEntry[];
+    problems: string[];
+  }>;
 };
 
 export async function uploadBudgetStatement(fd: FormData): Promise<BudgetUploadResult> {

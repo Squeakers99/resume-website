@@ -94,16 +94,24 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
       {lastResult && (
         <div className={styles.uploadPreview}>
           <p className={styles.uploadPreviewTitle}>
-            Parsed {lastResult.entries.length} transactions from{" "}
-            {lastResult.statement.source} ({lastResult.statement.statementDate})
-            {lastResult.statement.validationStatus === "mismatch" && (
-              <strong> — totals mismatch, review below</strong>
-            )}
+            {lastResult.document.filename}: {lastResult.results.length} account
+            {lastResult.results.length === 1 ? "" : "s"} parsed, PDF stored
           </p>
-          {lastResult.problems.map((p) => (
-            <p key={p} className={styles.errorText}>
-              {p}
-            </p>
+          {lastResult.results.map((r) => (
+            <div key={r.statement.id}>
+              <p className={styles.uploadPreviewTitle}>
+                {r.entries.length} transactions from {r.statement.source} (
+                {r.statement.statementDate})
+                {r.statement.validationStatus === "mismatch" && (
+                  <strong> — totals mismatch, review below</strong>
+                )}
+              </p>
+              {r.problems.map((p) => (
+                <p key={p} className={styles.errorText}>
+                  {p}
+                </p>
+              ))}
+            </div>
           ))}
         </div>
       )}

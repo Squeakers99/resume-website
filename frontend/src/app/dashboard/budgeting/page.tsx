@@ -26,7 +26,9 @@ export default async function BudgetingPage() {
   }
 
   let summary: BudgetSummary = {
-    latest: null,
+    latestCard: null,
+    latestChequing: null,
+    latestSavings: null,
     statementCount: 0,
     categoryTotals: [],
     monthlyByCategory: [],
@@ -41,12 +43,7 @@ export default async function BudgetingPage() {
     ]);
   }
 
-  const latest = summary.latest;
-  const periodSpend = latest
-    ? summary.monthlyByCategory
-        .filter((m) => m.month === latest.periodEnd.slice(0, 7))
-        .reduce((sum, m) => sum + m.total, 0)
-    : 0;
+  const { latestCard, latestChequing, latestSavings } = summary;
 
   return (
     <main className={dashStyles.wrapper}>
@@ -62,34 +59,45 @@ export default async function BudgetingPage() {
         <div className={styles.statTile}>
           <span className={styles.statLabel}>Current balance</span>
           <span className={styles.statValue}>
-            {latest ? money(latest.totalBalance) : "—"}
+            {latestChequing ? money(latestChequing.totalBalance) : "—"}
           </span>
           <span className={styles.statHint}>
-            {latest ? `as of ${latest.statementDate}` : "upload a statement"}
+            {latestChequing
+              ? `chequing · as of ${latestChequing.statementDate}`
+              : "upload a chequing statement"}
           </span>
         </div>
         <div className={styles.statTile}>
-          <span className={styles.statLabel}>Purchases this period</span>
+          <span className={styles.statLabel}>Savings</span>
           <span className={styles.statValue}>
-            {latest ? money(latest.purchasesTotal) : "—"}
+            {latestSavings ? money(latestSavings.totalBalance) : "—"}
           </span>
           <span className={styles.statHint}>
-            {latest ? `${latest.periodStart} → ${latest.periodEnd}` : ""}
+            {latestSavings ? `as of ${latestSavings.statementDate}` : ""}
           </span>
         </div>
         <div className={styles.statTile}>
-          <span className={styles.statLabel}>Payments this period</span>
+          <span className={styles.statLabel}>Card balance</span>
           <span className={styles.statValue}>
-            {latest ? money(latest.paymentsCredits) : "—"}
+            {latestCard ? money(latestCard.totalBalance) : "—"}
           </span>
           <span className={styles.statHint}>
-            {latest ? `spend tracked ${money(periodSpend)}` : ""}
+            {latestCard ? `owing · as of ${latestCard.statementDate}` : ""}
+          </span>
+        </div>
+        <div className={styles.statTile}>
+          <span className={styles.statLabel}>Card purchases this period</span>
+          <span className={styles.statValue}>
+            {latestCard ? money(latestCard.purchasesTotal) : "—"}
+          </span>
+          <span className={styles.statHint}>
+            {latestCard ? `${latestCard.periodStart} → ${latestCard.periodEnd}` : ""}
           </span>
         </div>
         <div className={styles.statTile}>
           <span className={styles.statLabel}>Statements on file</span>
           <span className={styles.statValue}>{summary.statementCount}</span>
-          <span className={styles.statHint}>{latest?.source ?? ""}</span>
+          <span className={styles.statHint}>across all accounts</span>
         </div>
       </section>
 
