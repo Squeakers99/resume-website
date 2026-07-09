@@ -21,6 +21,13 @@ const money = (n: number) =>
 // Owner's card-total rule (mirrors backend computedCardTotalCents): charges
 // minus credits, ignoring only the one TRSF credit that equals the printed
 // previous balance (the settlement payment).
+// Sum of ALL TRSF credits, settlement included — the owner's rule for the
+// printed "Payments and credits" figure.
+const trsfSum = (entries: BudgetEntry[]): number =>
+  entries
+    .filter((e) => e.isCredit && /TRSF/i.test(e.description))
+    .reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100;
+
 const cardTotalFromEntries = (
   entries: BudgetEntry[],
   previousBalance: number
@@ -210,11 +217,13 @@ export default function ReviewStatementModal({ statement, onClose }: Props) {
         {current.accountType === "credit_card" ? (
           <div className={styles.filterPanel}>
             {moneyField("Total balance", "totalBalance")}
+            {moneyField("Payments and credits", "paymentsCredits")}
             {entries !== null && (
               <p className={styles.mutedText}>
-                Computed from entries:{" "}
+                Computed total:{" "}
                 {money(cardTotalFromEntries(entries, current.previousBalance))} (charges −
-                credits; the {money(current.previousBalance)} settlement TRSF ignored)
+                credits; the {money(current.previousBalance)} settlement TRSF ignored) ·
+                TRSF sum: {money(trsfSum(entries))} (should equal payments and credits)
               </p>
             )}
           </div>

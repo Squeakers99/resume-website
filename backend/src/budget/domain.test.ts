@@ -3,6 +3,7 @@ import {
   BUDGET_CATEGORIES,
   computedCardTotalCents,
   toCents,
+  trsfCreditsSumCents,
   validateStatement,
   type ExtractedStatement,
 } from "./domain";
@@ -29,10 +30,10 @@ const baseStatement = (): ExtractedStatement => ({
     {
       transDate: "2026-06-08",
       postingDate: "2026-06-09",
-      description: "PAYMENT RECEIVED - THANK YOU",
-      amount: 99.99,
+      description: "TRSF FROM/DE ACCT/CPT 3776-XXXX-387",
+      amount: 99.99, // extra TRSF beyond the settlement — subtracts from total
       isCredit: true,
-      category: "Payment/Credit",
+      category: "Card Payment",
     },
     {
       transDate: "2026-06-08",
@@ -155,6 +156,7 @@ describe("validateStatement", () => {
     expect(computedCardTotalCents(s.entries, toCents(s.previousBalance))).toBe(82306);
     expect(validateStatement(s).status).toBe("mismatch");
     s.totalBalance = 823.06;
+    s.paymentsCredits = 630.95; // TRSF sum rule: 480.96 + 99.99 + 50.00
     expect(validateStatement(s).status).toBe("valid");
   });
 
@@ -166,16 +168,28 @@ describe("validateStatement", () => {
     expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
   });
 
-  it("flags a mis-read non-TRSF credit on a card", () => {
+  it("flags a mis-read extra TRSF credit on a card", () => {
     const s = baseStatement();
-    s.entries[1].amount = 9.99; // PAYMENT RECEIVED read as 9.99 instead of 99.99
+    s.entries[1].amount = 9.99; // extra TRSF read as 9.99 instead of 99.99
     const result = validateStatement(s);
     expect(result.status).toBe("mismatch");
     expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
   });
 
+  it("flags payments and credits that don't match the TRSF sum", () => {
+    const s = baseStatement();
+    // A non-TRSF credit still subtracts from the total, but no longer counts
+    // toward the TRSF sum, so the printed payments-and-credits stops matching.
+    s.entries[1].description = "PAYMENT RECEIVED - THANK YOU";
+    const result = validateStatement(s);
+    expect(result.status).toBe("mismatch");
+    expect(result.problems.some((p) => p.includes("payments and credits"))).toBe(true);
+    expect(result.problems.some((p) => p.includes("computed total"))).toBe(false);
+  });
+
   it("computes the card total with the settlement TRSF ignored", () => {
     const s = baseStatement();
     expect(computedCardTotalCents(s.entries, toCents(s.previousBalance))).toBe(87306);
+    expect(trsfCreditsSumCents(s.entries)).toBe(58095);
   });
 });

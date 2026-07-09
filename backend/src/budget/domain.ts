@@ -88,6 +88,14 @@ export function computedCardTotalCents(
   return chargesCents - creditsCents;
 }
 
+export function trsfCreditsSumCents(
+  entries: Array<Pick<ExtractedEntry, "amount" | "isCredit" | "description">>
+): number {
+  return entries
+    .filter((e) => e.isCredit && /TRSF/i.test(e.description))
+    .reduce((sum, e) => sum + toCents(e.amount), 0);
+}
+
 export function validateStatement(s: ExtractedStatement): ValidationResult {
   const problems: string[] = [];
 
@@ -102,6 +110,15 @@ export function validateStatement(s: ExtractedStatement): ValidationResult {
     if (Math.abs(computedCents - toCents(s.totalBalance)) > TOLERANCE_CENTS) {
       problems.push(
         `computed total ${(computedCents / 100).toFixed(2)} (charges minus credits, TRSF ignored) does not match total balance ${s.totalBalance.toFixed(2)}`
+      );
+    }
+
+    // Owner rule: printed "Payments and credits" must equal the sum of ALL
+    // TRSF credits, including the settlement one excluded from the total.
+    const trsfSumCents = trsfCreditsSumCents(s.entries);
+    if (Math.abs(trsfSumCents - toCents(s.paymentsCredits)) > TOLERANCE_CENTS) {
+      problems.push(
+        `payments and credits ${s.paymentsCredits.toFixed(2)} does not match the sum of TRSF entries ${(trsfSumCents / 100).toFixed(2)}`
       );
     }
     return {
