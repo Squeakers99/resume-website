@@ -7,6 +7,7 @@ import {
   listStatementEntries,
   patchBudgetEntry,
   patchBudgetStatement,
+  refreshBudgetInsights,
   uploadBudgetStatement,
   type BudgetEntry,
   type BudgetEntryPatch,
@@ -108,6 +109,17 @@ export async function updateStatementAction(
     const result = await patchBudgetStatement(id, patch);
     revalidatePath("/dashboard/budgeting");
     return { ok: true, statement: result.statement, problems: result.problems };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function refreshInsightsAction(): Promise<ActionResult> {
+  try {
+    await assertOwner();
+    await refreshBudgetInsights();
+    revalidatePath("/dashboard/budgeting");
+    return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }

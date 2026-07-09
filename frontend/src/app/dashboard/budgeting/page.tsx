@@ -1,9 +1,11 @@
 import { getBackendStatus } from "@/lib/api";
 import {
+  getBudgetInsights,
   getBudgetSummary,
   listBudgetEntries,
   listBudgetStatements,
   type BudgetEntry,
+  type BudgetInsights,
   type BudgetStatement,
   type BudgetSummary,
 } from "@/lib/server-api";
@@ -11,6 +13,7 @@ import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import styles from "./Budgeting.module.css";
 import { formatDay } from "./formatDate";
+import BudgetInsightsSection from "./BudgetInsightsSection";
 import BudgetUploadSection from "./BudgetUploadSection";
 import BudgetEntriesTable from "./BudgetEntriesTable";
 import BudgetChartsSection from "./BudgetChartsSection";
@@ -37,11 +40,18 @@ export default async function BudgetingPage() {
   };
   let entries: BudgetEntry[] = [];
   let statements: BudgetStatement[] = [];
+  let insights: BudgetInsights = {
+    projection: null,
+    recommendations: null,
+    generatedAt: null,
+    stale: false,
+  };
   if (backendConnected) {
-    [summary, entries, statements] = await Promise.all([
+    [summary, entries, statements, insights] = await Promise.all([
       getBudgetSummary().catch(() => summary),
       listBudgetEntries().catch(() => [] as BudgetEntry[]),
       listBudgetStatements().catch(() => [] as BudgetStatement[]),
+      getBudgetInsights().catch(() => insights),
     ]);
   }
 
@@ -110,6 +120,8 @@ export default async function BudgetingPage() {
         monthlyByCategory={summary.monthlyByCategory}
         cardBills={summary.cardBills}
       />
+
+      <BudgetInsightsSection insights={insights} />
 
       <div className={styles.lowerGrid}>
         <BudgetUploadSection

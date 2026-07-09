@@ -252,3 +252,25 @@ export async function getBudgetSummary(): Promise<BudgetSummary> {
   const res = await dashboardFetch("/budget/summary");
   return res.json();
 }
+
+export type BudgetInsights = {
+  projection: {
+    month: string;
+    total: number;
+    byCategory: Array<{ category: string; projected: number }>;
+    monthsUsed: number;
+  } | null;
+  recommendations: Array<{ title: string; detail: string }> | null;
+  generatedAt: string | null;
+  stale: boolean;
+};
+
+export async function getBudgetInsights(): Promise<BudgetInsights> {
+  const res = await dashboardFetch("/budget/insights");
+  return res.json();
+}
+
+export async function refreshBudgetInsights(): Promise<BudgetInsights> {
+  const res = await dashboardFetch("/budget/insights/refresh", { method: "POST" });
+  return res.json();
+}

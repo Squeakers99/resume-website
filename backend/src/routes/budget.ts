@@ -13,6 +13,11 @@ import {
   type ExtractedStatement,
 } from "../budget/domain";
 import { ExtractionError, extractStatementsFromText } from "../budget/extract";
+import {
+  generateRecommendations,
+  projectSpending,
+  type Recommendation,
+} from "../budget/insights";
 import { deleteStatementPdf, putStatementPdf, statementKeyPrefix } from "../lib/s3";
 
 const router = Router();
@@ -122,6 +127,17 @@ async function createBudgetTables() {
   await prisma.$executeRawUnsafe(`
     ALTER TABLE budget_entries
     ADD COLUMN IF NOT EXISTS position INTEGER NOT NULL DEFAULT 0
+  `);
+
+  // Cached AI recommendations (single row); source_hash marks the data state
+  // they were generated from so the UI can flag them as stale.
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS budget_insights (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      recommendations TEXT NOT NULL,
+      source_hash TEXT NOT NULL,
+      generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
   `);
 }
 
@@ -624,6 +640,130 @@ router.delete("/statements/:id", async (req, res) => {
   } catch (error) {
     console.error("Failed to delete statement", error);
     res.status(500).json({ error: "Failed to delete statement" });
+  }
+});
+
+// ----- Insights: trend projection + cached AI recommendations -----
+
+async function monthlySpendRows() {
+  return prisma.$queryRaw<Array<{ month: string; category: string; total_cents: number }>>`
+    SELECT to_char(date_trunc('month', trans_date), 'YYYY-MM') AS month,
+           category, SUM(amount_cents)::int AS total_cents
+    FROM budget_entries
+    WHERE NOT is_credit AND category NOT IN ('Payment/Credit', 'Card Payment')
+    GROUP BY 1, 2
+    ORDER BY 1 ASC
+  `;
+}
+
+async function insightsSourceHash(): Promise<string> {
+  const rows = await prisma.$queryRaw<Array<{ statements: number; entries: number }>>`
+    SELECT (SELECT COUNT(*)::int FROM budget_statements) AS statements,
+           (SELECT COUNT(*)::int FROM budget_entries) AS entries
+  `;
+  return `${rows[0].statements}-${rows[0].entries}`;
+}
+
+type InsightsRow = {
+  recommendations: string;
+  source_hash: string;
+  generated_at: Date;
+};
+
+async function buildInsightsResponse() {
+  const monthly = (await monthlySpendRows()).map((r) => ({
+    month: r.month,
+    category: r.category,
+    total: r.total_cents / 100,
+  }));
+  const projection = projectSpending(monthly);
+
+  const stored = await prisma.$queryRaw<InsightsRow[]>`
+    SELECT recommendations, source_hash, generated_at FROM budget_insights WHERE id = 1
+  `;
+  const hash = await insightsSourceHash();
+
+  let recommendations: Recommendation[] | null = null;
+  let generatedAt: string | null = null;
+  let stale = false;
+  if (stored.length > 0) {
+    try {
+      recommendations = JSON.parse(stored[0].recommendations) as Recommendation[];
+    } catch {
+      recommendations = null;
+    }
+    generatedAt = stored[0].generated_at.toISOString();
+    stale = stored[0].source_hash !== hash;
+  }
+
+  return { projection, recommendations, generatedAt, stale };
+}
+
+router.get("/insights", async (_req, res) => {
+  try {
+    await ensureBudgetTables();
+    res.json(await buildInsightsResponse());
+  } catch (error) {
+    console.error("Failed to build insights", error);
+    res.status(500).json({ error: "Failed to build insights" });
+  }
+});
+
+router.post("/insights/refresh", async (_req, res) => {
+  try {
+    await ensureBudgetTables();
+
+    const monthly = (await monthlySpendRows()).map((r) => ({
+      month: r.month,
+      category: r.category,
+      total: r.total_cents / 100,
+    }));
+    if (monthly.length === 0) {
+      return res.status(422).json({ error: "No spending data yet — upload statements first" });
+    }
+
+    const topExpenses = await prisma.$queryRaw<
+      Array<{ trans_date: Date; description: string; amount_cents: number; category: string }>
+    >`
+      SELECT trans_date, description, amount_cents, category
+      FROM budget_entries
+      WHERE NOT is_credit AND category NOT IN ('Payment/Credit', 'Card Payment')
+      ORDER BY amount_cents DESC
+      LIMIT 15
+    `;
+    const cardBills = await prisma.$queryRaw<Array<{ month: string; total_cents: number }>>`
+      SELECT to_char(statement_date, 'YYYY-MM') AS month,
+             SUM(total_balance_cents)::int AS total_cents
+      FROM budget_statements
+      WHERE account_type = 'credit_card'
+      GROUP BY 1 ORDER BY 1 ASC
+    `;
+
+    const recommendations = await generateRecommendations({
+      monthly,
+      topExpenses: topExpenses.map((e) => ({
+        date: isoDay(e.trans_date),
+        description: e.description,
+        amount: e.amount_cents / 100,
+        category: e.category,
+      })),
+      cardBills: cardBills.map((b) => ({ month: b.month, total: b.total_cents / 100 })),
+    });
+
+    const hash = await insightsSourceHash();
+    await prisma.$executeRaw`
+      INSERT INTO budget_insights (id, recommendations, source_hash, generated_at)
+      VALUES (1, ${JSON.stringify(recommendations)}, ${hash}, NOW())
+      ON CONFLICT (id) DO UPDATE
+      SET recommendations = ${JSON.stringify(recommendations)},
+          source_hash = ${hash},
+          generated_at = NOW()
+    `;
+
+    res.json(await buildInsightsResponse());
+  } catch (error) {
+    console.error("Failed to refresh insights", error);
+    res.status(502).json({ error: "Failed to generate recommendations — try again" });
   }
 });
 
