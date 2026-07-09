@@ -262,16 +262,25 @@ export default function BudgetChartsSection({
   const TIME_MARGIN = { top: 5, right: 12, bottom: 5, left: 0 };
   const dollars = (v: number) => `$${v.toLocaleString("en-CA")}`;
 
-  // Pinned left pane: renders only the value axis, on the same scale.
+  // Pinned left pane: renders only the value axis, on the same scale. The
+  // dummy invisible Line forces recharts to lay out the axis; explicit widths
+  // keep the dollar ticks from being crowded out by the rotated title.
   const stickyYAxis = (max: number, label: string) => (
     <div className={styles.stickyAxis} aria-hidden="true">
       <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={[{ month: "" }]} margin={TIME_MARGIN}>
+        <LineChart
+          data={[{ month: "", value: 0 }]}
+          margin={{ ...TIME_MARGIN, right: 0 }}
+        >
+          <Line dataKey="value" stroke="none" dot={false} isAnimationActive={false} />
           <YAxis
+            type="number"
             domain={[0, max]}
             ticks={ticksFor(max)}
+            width={80}
             fontSize={12}
-            tick={{ fill: "var(--text-muted)" }}
+            tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+            tickMargin={4}
             axisLine={{ stroke: "var(--card-edge)" }}
             tickLine={{ stroke: "var(--card-edge)" }}
             tickFormatter={dollars}
@@ -279,7 +288,7 @@ export default function BudgetChartsSection({
               value: label,
               angle: -90,
               position: "insideLeft",
-              offset: 4,
+              offset: 0,
               style: {
                 fill: "var(--text-muted)",
                 fontSize: 11,
