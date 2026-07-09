@@ -18,6 +18,7 @@ type Filters = {
 };
 
 const NO_FILTERS: Filters = { category: "All", from: "", to: "", min: "", max: "" };
+const PAGE_SIZE = 15;
 
 const money = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
@@ -25,10 +26,14 @@ const money = (n: number) =>
 export default function BudgetEntriesTable({ entries }: Props) {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
+  const set = (patch: Partial<Filters>) => {
+    setPage(0); // filters change what's visible — restart from the first page
+    setFilters((f) => ({ ...f, ...patch }));
+  };
 
   const activeCount = [
     filters.category !== "All",
@@ -50,6 +55,13 @@ export default function BudgetEntriesTable({ entries }: Props) {
       return true;
     });
   }, [entries, filters]);
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageRows = visible.slice(
+    currentPage * PAGE_SIZE,
+    (currentPage + 1) * PAGE_SIZE
+  );
 
   const onCategoryChange = (id: string, category: string) => {
     setError(null);
@@ -193,7 +205,7 @@ export default function BudgetEntriesTable({ entries }: Props) {
               </tr>
             </thead>
             <tbody>
-              {visible.map((e) => (
+              {pageRows.map((e) => (
                 <tr key={e.id}>
                   <td>{formatDay(e.transDate)}</td>
                   <td className={styles.descCell}>
@@ -246,6 +258,37 @@ export default function BudgetEntriesTable({ entries }: Props) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {pageCount > 1 && (
+        <div className={styles.pageFooter}>
+          <span className={styles.mutedText}>
+            {currentPage * PAGE_SIZE + 1}–
+            {Math.min((currentPage + 1) * PAGE_SIZE, visible.length)} of{" "}
+            {visible.length}
+          </span>
+          <span className={styles.statementActions}>
+            <button
+              type="button"
+              className={styles.btn}
+              disabled={currentPage === 0}
+              onClick={() => setPage(currentPage - 1)}
+            >
+              ‹ Prev
+            </button>
+            <span className={styles.mutedText}>
+              Page {currentPage + 1} of {pageCount}
+            </span>
+            <button
+              type="button"
+              className={styles.btn}
+              disabled={currentPage >= pageCount - 1}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              Next ›
+            </button>
+          </span>
         </div>
       )}
     </section>
