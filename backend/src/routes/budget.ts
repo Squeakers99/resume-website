@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import type { RequestHandler } from "express";
 import multer from "multer";
@@ -14,6 +15,7 @@ import {
 } from "../budget/domain";
 import { ExtractionError, extractStatementsFromText } from "../budget/extract";
 import {
+  classifySubscriptions,
   generateInsights,
   nextMonthLabel,
   projectSpending,
@@ -659,38 +661,69 @@ router.delete("/statements/:id", async (req, res) => {
   }
 });
 
-// ----- Recurring transactions -----
+// ----- Recurring subscriptions -----
 
-// Same merchant (letters-only normalized description) spending in 2+ distinct
-// months = recurring. Detection only ever ADDS flags — manual unmarks stick.
+// Candidates = same merchant (letters-only normalized description) charged in
+// 2+ distinct months; the AI then keeps only true SUBSCRIPTIONS (streaming,
+// memberships, software) and drops habitual purchases (coffee, restaurants).
+// Detection only ever ADDS flags — manual unmarks stick.
 router.post("/recurring/detect", async (_req, res) => {
   try {
     await ensureBudgetTables();
-    const marked = await prisma.$queryRaw<Array<{ id: string }>>`
-      WITH candidates AS (
-        SELECT id, trans_date,
-               trim(regexp_replace(regexp_replace(upper(description), '[^A-Z ]+', '', 'g'), '\\s+', ' ', 'g')) AS norm
-        FROM budget_entries
-        WHERE NOT is_credit
-          AND category NOT IN ('Income', 'Card Payment', 'Payment/Credit')
-      ),
-      recurring_norms AS (
-        SELECT norm FROM candidates
-        WHERE norm <> ''
-        GROUP BY norm
-        HAVING COUNT(DISTINCT date_trunc('month', trans_date)) >= 2
-      )
-      UPDATE budget_entries e
-      SET recurring = TRUE
-      FROM candidates c
-      WHERE e.id = c.id AND NOT e.recurring
-        AND c.norm IN (SELECT norm FROM recurring_norms)
-      RETURNING e.id
+
+    const candidates = await prisma.$queryRaw<
+      Array<{ id: string; norm: string; description: string; month: string; amount_cents: number }>
+    >`
+      SELECT id,
+             trim(regexp_replace(regexp_replace(upper(description), '[^A-Z ]+', '', 'g'), '\\s+', ' ', 'g')) AS norm,
+             description,
+             to_char(trans_date, 'YYYY-MM') AS month,
+             amount_cents
+      FROM budget_entries
+      WHERE NOT is_credit
+        AND category NOT IN ('Income', 'Card Payment', 'Payment/Credit')
     `;
-    res.json({ marked: marked.length });
+
+    const byNorm = new Map<string, typeof candidates>();
+    for (const c of candidates) {
+      if (!c.norm) continue;
+      const list = byNorm.get(c.norm) ?? [];
+      list.push(c);
+      byNorm.set(c.norm, list);
+    }
+
+    const groups = [...byNorm.entries()]
+      .map(([key, list]) => ({
+        key,
+        sample: list[0].description,
+        months: new Set(list.map((c) => c.month)).size,
+        charges: list.length,
+        minAmount: Math.min(...list.map((c) => c.amount_cents)) / 100,
+        maxAmount: Math.max(...list.map((c) => c.amount_cents)) / 100,
+      }))
+      .filter((g) => g.months >= 2);
+
+    const subscriptionKeys = await classifySubscriptions(groups);
+
+    const ids = [...byNorm.entries()]
+      .filter(([key]) => subscriptionKeys.has(key))
+      .flatMap(([, list]) => list.map((c) => c.id));
+
+    let marked = 0;
+    if (ids.length > 0) {
+      const result = await prisma.$queryRaw<Array<{ id: string }>>`
+        UPDATE budget_entries
+        SET recurring = TRUE
+        WHERE NOT recurring AND id IN (${Prisma.join(ids)})
+        RETURNING id
+      `;
+      marked = result.length;
+    }
+
+    res.json({ marked, subscriptions: subscriptionKeys.size });
   } catch (error) {
-    console.error("Failed to detect recurring transactions", error);
-    res.status(500).json({ error: "Failed to detect recurring transactions" });
+    console.error("Failed to detect subscriptions", error);
+    res.status(502).json({ error: "Failed to detect subscriptions — try again" });
   }
 });
 

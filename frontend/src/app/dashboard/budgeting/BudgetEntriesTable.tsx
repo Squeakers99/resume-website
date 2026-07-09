@@ -28,10 +28,6 @@ export default function BudgetEntriesTable({ entries }: Props) {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [panelOpen, setPanelOpen] = useState(false);
   const [recurringOpen, setRecurringOpen] = useState(false);
-  // Local recurring-flag overrides so toggles show instantly.
-  const [recurringOverrides, setRecurringOverrides] = useState<
-    Record<string, boolean>
-  >({});
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -119,7 +115,7 @@ export default function BudgetEntriesTable({ entries }: Props) {
             className={styles.btn}
             onClick={() => setRecurringOpen(true)}
           >
-            ↻ Recurring
+            ↻ Subscriptions
           </button>
           <button
             type="button"
@@ -217,7 +213,6 @@ export default function BudgetEntriesTable({ entries }: Props) {
                 <th>Description</th>
                 <th className={styles.amountCol}>Amount</th>
                 <th>Category</th>
-                <th title="Recurring">↻</th>
               </tr>
             </thead>
             <tbody>
@@ -269,29 +264,6 @@ export default function BudgetEntriesTable({ entries }: Props) {
                         <option key={c}>{c}</option>
                       ))}
                     </select>
-                  </td>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={recurringOverrides[e.id] ?? e.recurring}
-                      disabled={isPending}
-                      aria-label={`${e.description} is recurring`}
-                      onChange={(ev) => {
-                        const value = ev.target.checked;
-                        setRecurringOverrides((prev) => ({ ...prev, [e.id]: value }));
-                        startTransition(async () => {
-                          const res = await updateEntryAction(e.id, { recurring: value });
-                          if (!res.ok) {
-                            setError(res.error ?? "Failed to update recurring flag");
-                            setRecurringOverrides((prev) => {
-                              const next = { ...prev };
-                              delete next[e.id];
-                              return next;
-                            });
-                          }
-                        });
-                      }}
-                    />
                   </td>
                 </tr>
               ))}

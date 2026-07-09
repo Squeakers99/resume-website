@@ -49,8 +49,8 @@ export default function RecurringModal({ onClose }: Props) {
       }
       setStatus(
         res.marked && res.marked > 0
-          ? `Detected and marked ${res.marked} new recurring transaction${res.marked === 1 ? "" : "s"}.`
-          : "No new recurring transactions found."
+          ? `Detected and marked ${res.marked} new subscription charge${res.marked === 1 ? "" : "s"}.`
+          : "No new subscriptions found."
       );
       await load();
     });
@@ -93,15 +93,16 @@ export default function RecurringModal({ onClose }: Props) {
         className={styles.modal}
         role="dialog"
         aria-modal="true"
-        aria-label="Recurring transactions"
+        aria-label="Subscriptions"
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.modalHeader}>
           <div>
-            <h2 className={styles.cardHeading}>Recurring transactions</h2>
+            <h2 className={styles.cardHeading}>Subscriptions</h2>
             <p className={styles.mutedText}>
-              Same merchant in two or more months. Detection only adds — your
-              manual changes stick.
+              AI keeps only true subscriptions (streaming, memberships, software)
+              — habitual purchases are excluded. Detection only adds; your manual
+              changes stick.
             </p>
           </div>
           <span className={styles.statementActions}>
@@ -129,10 +130,7 @@ export default function RecurringModal({ onClose }: Props) {
         {entries === null ? (
           <p className={styles.mutedText}>Loading…</p>
         ) : groups.length === 0 ? (
-          <p className={styles.mutedText}>
-            Nothing marked recurring yet — click Detect, or use the ↻ column in
-            the transactions table.
-          </p>
+          <p className={styles.mutedText}>No subscriptions marked yet — click Detect.</p>
         ) : (
           groups.map((g) => (
             <div key={g.key}>

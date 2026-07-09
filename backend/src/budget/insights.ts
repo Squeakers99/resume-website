@@ -76,6 +76,93 @@ export function projectSpending(
   };
 }
 
+export type MerchantGroup = {
+  key: string; // normalized merchant name
+  sample: string; // a raw description example
+  months: number;
+  charges: number;
+  minAmount: number;
+  maxAmount: number;
+};
+
+const SUBSCRIPTION_PROMPT = `You classify merchant charge groups from the owner's
+bank/card statements. A SUBSCRIPTION is a recurring service billed automatically:
+streaming (Disney+, Netflix, Spotify), paid memberships (UBER ONE / UberOneMem,
+Amazon Prime, gym), software/app subscriptions (Discord Nitro, iCloud, Google
+services billed monthly), phone/internet plans, cloud hosting. Ordinary repeated
+purchases are NOT subscriptions: coffee shops, restaurants, groceries, gas,
+transit, vending, car-share usage, ride/delivery orders (Uber trips and Uber Eats
+orders are NOT subscriptions, but an Uber One membership IS), person-to-person
+transfers, campus card top-ups. A stable amount charged about once a month is
+strong evidence FOR; highly variable amounts or many charges per month are
+evidence AGAINST. Classify every group.`;
+
+const SUBSCRIPTION_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["groups"],
+  properties: {
+    groups: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["key", "is_subscription"],
+        properties: {
+          key: { type: "string" },
+          is_subscription: { type: "boolean" },
+        },
+      },
+    },
+  },
+} as const;
+
+// Returns the normalized keys of the groups the model considers subscriptions.
+export async function classifySubscriptions(
+  groups: MerchantGroup[]
+): Promise<Set<string>> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new InsightsError("OPENAI_API_KEY is not set");
+  }
+  if (groups.length === 0) return new Set();
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  const payload = groups
+    .map(
+      (g) =>
+        `key: ${g.key}\n  example: ${g.sample}\n  pattern: ${g.charges} charges across ${g.months} months, amounts $${g.minAmount.toFixed(2)}–$${g.maxAmount.toFixed(2)}`
+    )
+    .join("\n");
+
+  const completion = await client.chat.completions.create({
+    model: "gpt-4.1-mini",
+    messages: [
+      { role: "system", content: SUBSCRIPTION_PROMPT },
+      { role: "user", content: payload },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "subscription_classification",
+        strict: true,
+        schema: SUBSCRIPTION_SCHEMA as unknown as Record<string, unknown>,
+      },
+    },
+  });
+
+  const content = completion.choices[0]?.message?.content;
+  if (!content) throw new InsightsError("model returned no content");
+  let parsed: { groups: Array<{ key: string; is_subscription: boolean }> };
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new InsightsError("model returned invalid JSON");
+  }
+  return new Set(
+    parsed.groups.filter((g) => g.is_subscription).map((g) => g.key)
+  );
+}
+
 export type AiProjection = {
   month: string;
   total: number;
