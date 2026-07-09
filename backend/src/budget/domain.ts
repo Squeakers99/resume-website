@@ -63,6 +63,17 @@ export function validateStatement(s: ExtractedStatement): ValidationResult {
     );
   }
 
+  // Credits must reconcile too — a mis-read payment amount (e.g. an account
+  // number bleeding into the figure) is invisible to the purchases check.
+  const creditsSumCents = s.entries
+    .filter((e) => e.isCredit)
+    .reduce((sum, e) => sum + toCents(e.amount), 0);
+  if (Math.abs(creditsSumCents - toCents(s.paymentsCredits)) > TOLERANCE_CENTS) {
+    problems.push(
+      `extracted credits sum ${(creditsSumCents / 100).toFixed(2)} does not match printed payments and credits ${s.paymentsCredits.toFixed(2)}`
+    );
+  }
+
   const computedBalanceCents =
     toCents(s.previousBalance) - toCents(s.paymentsCredits) + printedPurchasesCents;
   if (Math.abs(computedBalanceCents - toCents(s.totalBalance)) > TOLERANCE_CENTS) {

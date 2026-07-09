@@ -42,9 +42,18 @@ describe("mapExtractionPayload", () => {
     expect(() => mapExtractionPayload(p)).toThrow(ExtractionError);
   });
 
-  it("rejects negative amounts", () => {
+  it("normalizes signed magnitudes (statement prints e.g. -580.95)", () => {
     const p = goodPayload();
     p.entries[0].amount = -45.19;
+    p.payments_credits = -580.95;
+    const s = mapExtractionPayload(p);
+    expect(s.entries[0].amount).toBe(45.19);
+    expect(s.paymentsCredits).toBe(580.95);
+  });
+
+  it("rejects non-numeric amounts", () => {
+    const p = goodPayload();
+    (p.entries[0] as { amount: unknown }).amount = "45.19";
     expect(() => mapExtractionPayload(p)).toThrow(ExtractionError);
   });
 

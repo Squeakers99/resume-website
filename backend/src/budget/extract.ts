@@ -22,6 +22,11 @@ Rules:
 - Assign every non-credit entry the best-fitting category from the provided list.
   Use "Other" only when nothing fits.
 - source is the card product + last 4 digits, e.g. "BMO Mastercard 4423".
+- Extracted text may run tokens together. A description can end in a partially
+  masked account number (e.g. "TRSF FROM/DE ACCT/CPT 3776-XXXX-387") followed
+  immediately by the amount ("480.96") — never absorb the amount's digits into
+  the account number or vice versa. The amount is the full final monetary value
+  on the line.
 - Do not invent, merge, or drop transactions.`;
 
 const ENTRY_SCHEMA = {
@@ -74,11 +79,18 @@ function requireIsoDate(value: unknown, field: string): string {
   return value;
 }
 
-function requireMoney(value: unknown, field: string): number {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
-    throw new ExtractionError(`${field} is not a non-negative number: ${String(value)}`);
+function requireFiniteNumber(value: unknown, field: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new ExtractionError(`${field} is not a number: ${String(value)}`);
   }
   return value;
+}
+
+// Magnitude fields: the statement prints some of these signed ("-580.95") and
+// the model sometimes echoes the sign despite the prompt. Direction is carried
+// separately (is_credit, the balance formula), so the absolute value is safe.
+function requireMagnitude(value: unknown, field: string): number {
+  return Math.abs(requireFiniteNumber(value, field));
 }
 
 function requireString(value: unknown, field: string): string {
@@ -114,7 +126,7 @@ export function mapExtractionPayload(payload: unknown): ExtractedStatement {
       transDate: requireIsoDate(e.trans_date, `entries[${i}].trans_date`),
       postingDate: requireIsoDate(e.posting_date, `entries[${i}].posting_date`),
       description: requireString(e.description, `entries[${i}].description`),
-      amount: requireMoney(e.amount, `entries[${i}].amount`),
+      amount: requireMagnitude(e.amount, `entries[${i}].amount`),
       isCredit: e.is_credit === true,
       category: category as BudgetCategory,
     };
@@ -125,10 +137,10 @@ export function mapExtractionPayload(payload: unknown): ExtractedStatement {
     statementDate: requireIsoDate(p.statement_date, "statement_date"),
     periodStart: requireIsoDate(p.period_start, "period_start"),
     periodEnd: requireIsoDate(p.period_end, "period_end"),
-    previousBalance: requireMoney(p.previous_balance, "previous_balance"),
-    paymentsCredits: requireMoney(p.payments_credits, "payments_credits"),
-    purchasesTotal: requireMoney(p.purchases_total, "purchases_total"),
-    totalBalance: requireMoney(p.total_balance, "total_balance"),
+    previousBalance: requireFiniteNumber(p.previous_balance, "previous_balance"),
+    paymentsCredits: requireMagnitude(p.payments_credits, "payments_credits"),
+    purchasesTotal: requireMagnitude(p.purchases_total, "purchases_total"),
+    totalBalance: requireFiniteNumber(p.total_balance, "total_balance"),
     entries,
   };
 }

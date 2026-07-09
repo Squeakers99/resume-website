@@ -96,4 +96,12 @@ describe("validateStatement", () => {
     expect(result.status).toBe("mismatch");
     expect(result.problems.some((p) => p.includes("balance"))).toBe(true);
   });
+
+  it("flags a credits-sum mismatch (mis-read payment amount)", () => {
+    const s = baseStatement();
+    s.entries[0].amount = 0.96; // TRSF read as 0.96 instead of 480.96
+    const result = validateStatement(s);
+    expect(result.status).toBe("mismatch");
+    expect(result.problems.some((p) => p.includes("credits"))).toBe(true);
+  });
 });
