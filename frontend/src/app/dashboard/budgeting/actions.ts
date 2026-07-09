@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getOwnerSession } from "@/lib/auth";
 import {
   deleteBudgetStatement,
+  detectRecurring,
+  listRecurring,
   listStatementEntries,
   patchBudgetEntry,
   patchBudgetStatement,
@@ -109,6 +111,30 @@ export async function updateStatementAction(
     const result = await patchBudgetStatement(id, patch);
     revalidatePath("/dashboard/budgeting");
     return { ok: true, statement: result.statement, problems: result.problems };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function detectRecurringAction(): Promise<
+  ActionResult & { marked?: number }
+> {
+  try {
+    await assertOwner();
+    const result = await detectRecurring();
+    revalidatePath("/dashboard/budgeting");
+    return { ok: true, marked: result.marked };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function listRecurringAction(): Promise<
+  ActionResult & { entries?: BudgetEntry[] }
+> {
+  try {
+    await assertOwner();
+    return { ok: true, entries: await listRecurring() };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }

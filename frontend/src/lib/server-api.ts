@@ -131,6 +131,7 @@ export type BudgetEntry = {
   amount: number;
   isCredit: boolean;
   category: string;
+  recurring: boolean;
 };
 
 export type BudgetSummary = {
@@ -201,6 +202,7 @@ export type BudgetEntryPatch = {
   postingDate?: string;
   amount?: number;
   isCredit?: boolean;
+  recurring?: boolean;
 };
 
 export type BudgetEntryPatchResult = {
@@ -274,5 +276,15 @@ export async function getBudgetInsights(): Promise<BudgetInsights> {
 
 export async function refreshBudgetInsights(): Promise<BudgetInsights> {
   const res = await dashboardFetch("/budget/insights/refresh", { method: "POST" });
+  return res.json();
+}
+
+export async function detectRecurring(): Promise<{ marked: number }> {
+  const res = await dashboardFetch("/budget/recurring/detect", { method: "POST" });
+  return res.json();
+}
+
+export async function listRecurring(): Promise<BudgetEntry[]> {
+  const res = await dashboardFetch("/budget/recurring");
   return res.json();
 }

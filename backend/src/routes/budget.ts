@@ -144,6 +144,11 @@ async function createBudgetTables() {
   await prisma.$executeRawUnsafe(`
     ALTER TABLE budget_insights ADD COLUMN IF NOT EXISTS projection TEXT
   `);
+  // Recurring flag: set by detection or by hand; detection only ever adds.
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE budget_entries
+    ADD COLUMN IF NOT EXISTS recurring BOOLEAN NOT NULL DEFAULT FALSE
+  `);
 }
 
 type StatementRow = {
@@ -174,6 +179,7 @@ type EntryRow = {
   amount_cents: number;
   is_credit: boolean;
   category: string;
+  recurring?: boolean;
 };
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
@@ -206,6 +212,7 @@ const toEntry = (row: EntryRow) => ({
   amount: row.amount_cents / 100,
   isCredit: row.is_credit,
   category: row.category,
+  recurring: row.recurring ?? false,
 });
 
 // Rebuild a statement + its entries from the DB and re-run the printed-totals
@@ -231,7 +238,7 @@ async function revalidateStatement(
 
   const entryRows = await prisma.$queryRaw<EntryRow[]>`
     SELECT id, statement_id, trans_date, posting_date, description,
-           amount_cents, is_credit, category
+           amount_cents, is_credit, category, recurring
     FROM budget_entries WHERE statement_id = ${statementId}
   `;
 
@@ -399,7 +406,7 @@ router.post("/statements", uploadPdf, async (req, res) => {
               ${position}
             )
             RETURNING id, statement_id, trans_date, posting_date, description,
-                      amount_cents, is_credit, category
+                      amount_cents, is_credit, category, recurring
           `;
           entries.push(rows[0]);
         }
@@ -487,7 +494,7 @@ router.get("/statements/:id/entries", async (req, res) => {
     await ensureBudgetTables();
     const rows = await prisma.$queryRaw<EntryRow[]>`
       SELECT id, statement_id, trans_date, posting_date, description,
-             amount_cents, is_credit, category
+             amount_cents, is_credit, category, recurring
       FROM budget_entries
       WHERE statement_id = ${req.params.id}
       ORDER BY position ASC, trans_date ASC, posting_date ASC
@@ -584,6 +591,9 @@ router.patch("/entries/:id", async (req, res) => {
     if (b.isCredit !== undefined && typeof b.isCredit !== "boolean") {
       return res.status(400).json({ error: "isCredit must be a boolean" });
     }
+    if (b.recurring !== undefined && typeof b.recurring !== "boolean") {
+      return res.status(400).json({ error: "recurring must be a boolean" });
+    }
 
     const rows = await prisma.$queryRaw<EntryRow[]>`
       UPDATE budget_entries SET
@@ -592,10 +602,11 @@ router.patch("/entries/:id", async (req, res) => {
         trans_date = COALESCE(${(b.transDate as string | undefined) ?? null}::date, trans_date),
         posting_date = COALESCE(${(b.postingDate as string | undefined) ?? null}::date, posting_date),
         amount_cents = COALESCE(${b.amount !== undefined ? toCents(b.amount as number) : null}, amount_cents),
-        is_credit = COALESCE(${(b.isCredit as boolean | undefined) ?? null}, is_credit)
+        is_credit = COALESCE(${(b.isCredit as boolean | undefined) ?? null}, is_credit),
+        recurring = COALESCE(${(b.recurring as boolean | undefined) ?? null}, recurring)
       WHERE id = ${req.params.id}
       RETURNING id, statement_id, trans_date, posting_date, description,
-                amount_cents, is_credit, category
+                amount_cents, is_credit, category, recurring
     `;
     if (rows.length === 0) return res.status(404).json({ error: "entry not found" });
 
@@ -645,6 +656,58 @@ router.delete("/statements/:id", async (req, res) => {
   } catch (error) {
     console.error("Failed to delete statement", error);
     res.status(500).json({ error: "Failed to delete statement" });
+  }
+});
+
+// ----- Recurring transactions -----
+
+// Same merchant (letters-only normalized description) spending in 2+ distinct
+// months = recurring. Detection only ever ADDS flags — manual unmarks stick.
+router.post("/recurring/detect", async (_req, res) => {
+  try {
+    await ensureBudgetTables();
+    const marked = await prisma.$queryRaw<Array<{ id: string }>>`
+      WITH candidates AS (
+        SELECT id, trans_date,
+               trim(regexp_replace(regexp_replace(upper(description), '[^A-Z ]+', '', 'g'), '\\s+', ' ', 'g')) AS norm
+        FROM budget_entries
+        WHERE NOT is_credit
+          AND category NOT IN ('Income', 'Card Payment', 'Payment/Credit')
+      ),
+      recurring_norms AS (
+        SELECT norm FROM candidates
+        WHERE norm <> ''
+        GROUP BY norm
+        HAVING COUNT(DISTINCT date_trunc('month', trans_date)) >= 2
+      )
+      UPDATE budget_entries e
+      SET recurring = TRUE
+      FROM candidates c
+      WHERE e.id = c.id AND NOT e.recurring
+        AND c.norm IN (SELECT norm FROM recurring_norms)
+      RETURNING e.id
+    `;
+    res.json({ marked: marked.length });
+  } catch (error) {
+    console.error("Failed to detect recurring transactions", error);
+    res.status(500).json({ error: "Failed to detect recurring transactions" });
+  }
+});
+
+router.get("/recurring", async (_req, res) => {
+  try {
+    await ensureBudgetTables();
+    const rows = await prisma.$queryRaw<EntryRow[]>`
+      SELECT id, statement_id, trans_date, posting_date, description,
+             amount_cents, is_credit, category, recurring
+      FROM budget_entries
+      WHERE recurring
+      ORDER BY description ASC, trans_date DESC
+    `;
+    res.json(rows.map(toEntry));
+  } catch (error) {
+    console.error("Failed to list recurring transactions", error);
+    res.status(500).json({ error: "Failed to list recurring transactions" });
   }
 });
 

@@ -5,6 +5,7 @@ import type { BudgetEntry } from "@/lib/server-api";
 import { BUDGET_CATEGORIES } from "./budgetCategories";
 import { formatDay } from "./formatDate";
 import { recategorizeEntryAction, updateEntryAction } from "./actions";
+import RecurringModal from "./RecurringModal";
 import styles from "./Budgeting.module.css";
 
 type Props = { entries: BudgetEntry[] };
@@ -26,6 +27,11 @@ const money = (n: number) =>
 export default function BudgetEntriesTable({ entries }: Props) {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [recurringOpen, setRecurringOpen] = useState(false);
+  // Local recurring-flag overrides so toggles show instantly.
+  const [recurringOverrides, setRecurringOverrides] = useState<
+    Record<string, boolean>
+  >({});
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -107,14 +113,23 @@ export default function BudgetEntriesTable({ entries }: Props) {
     <section className={styles.card} aria-label="Transactions">
       <div className={styles.tableHeader}>
         <h2 className={styles.cardHeading}>Transactions</h2>
-        <button
-          type="button"
-          className={styles.btn}
-          aria-expanded={panelOpen}
-          onClick={() => setPanelOpen((v) => !v)}
-        >
-          Filters{activeCount > 0 ? ` (${activeCount})` : ""}
-        </button>
+        <span className={styles.statementActions}>
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={() => setRecurringOpen(true)}
+          >
+            ↻ Recurring
+          </button>
+          <button
+            type="button"
+            className={styles.btn}
+            aria-expanded={panelOpen}
+            onClick={() => setPanelOpen((v) => !v)}
+          >
+            Filters{activeCount > 0 ? ` (${activeCount})` : ""}
+          </button>
+        </span>
       </div>
 
       {panelOpen && (
@@ -202,6 +217,7 @@ export default function BudgetEntriesTable({ entries }: Props) {
                 <th>Description</th>
                 <th className={styles.amountCol}>Amount</th>
                 <th>Category</th>
+                <th title="Recurring">↻</th>
               </tr>
             </thead>
             <tbody>
@@ -254,12 +270,37 @@ export default function BudgetEntriesTable({ entries }: Props) {
                       ))}
                     </select>
                   </td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={recurringOverrides[e.id] ?? e.recurring}
+                      disabled={isPending}
+                      aria-label={`${e.description} is recurring`}
+                      onChange={(ev) => {
+                        const value = ev.target.checked;
+                        setRecurringOverrides((prev) => ({ ...prev, [e.id]: value }));
+                        startTransition(async () => {
+                          const res = await updateEntryAction(e.id, { recurring: value });
+                          if (!res.ok) {
+                            setError(res.error ?? "Failed to update recurring flag");
+                            setRecurringOverrides((prev) => {
+                              const next = { ...prev };
+                              delete next[e.id];
+                              return next;
+                            });
+                          }
+                        });
+                      }}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {recurringOpen && <RecurringModal onClose={() => setRecurringOpen(false)} />}
 
       {pageCount > 1 && (
         <div className={styles.pageFooter}>
