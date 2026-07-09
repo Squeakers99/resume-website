@@ -223,7 +223,7 @@ export default function BudgetChartsSection({
   const dollars = (v: number) => `$${v.toLocaleString("en-CA")}`;
 
   // Pinned left pane: renders only the value axis, on the same scale.
-  const stickyYAxis = (max: number) => (
+  const stickyYAxis = (max: number, label: string) => (
     <div className={styles.stickyAxis} aria-hidden="true">
       <ResponsiveContainer width="100%" height={260}>
         <LineChart data={[{ month: "" }]} margin={TIME_MARGIN}>
@@ -235,6 +235,18 @@ export default function BudgetChartsSection({
             axisLine={{ stroke: "var(--card-edge)" }}
             tickLine={{ stroke: "var(--card-edge)" }}
             tickFormatter={dollars}
+            label={{
+              value: label,
+              angle: -90,
+              position: "insideLeft",
+              offset: 4,
+              style: {
+                fill: "var(--text-muted)",
+                fontSize: 11,
+                fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                textAnchor: "middle",
+              },
+            }}
           />
           <XAxis dataKey="month" height={30} tick={false} axisLine={false} tickLine={false} />
         </LineChart>
@@ -306,7 +318,7 @@ export default function BudgetChartsSection({
       <div className={styles.card}>
         <h2 className={styles.cardHeading}>Monthly spending</h2>
         <div className={styles.stickyChart}>
-          {stickyYAxis(barMax)}
+          {stickyYAxis(barMax, "Spend (CAD)")}
           <div className={styles.chartScroll}>
             <div
               className={styles.chartBox}
@@ -354,7 +366,7 @@ export default function BudgetChartsSection({
         <div className={styles.card}>
           <h2 className={styles.cardHeading}>Card bills by month</h2>
           <div className={styles.stickyChart}>
-            {stickyYAxis(lineMax)}
+            {stickyYAxis(lineMax, "Bill total (CAD)")}
             <div className={styles.chartScroll}>
               <div
                 className={styles.chartBox}
