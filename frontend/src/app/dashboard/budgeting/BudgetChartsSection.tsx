@@ -263,9 +263,8 @@ export default function BudgetChartsSection({
   const dollars = (v: number) => `$${v.toLocaleString("en-CA")}`;
 
   // Pinned left pane: renders only the value axis, on the same scale. The
-  // dummy invisible Line forces recharts to lay out the axis; explicit widths
-  // keep the dollar ticks from being crowded out by the rotated title.
-  const stickyYAxis = (max: number, label: string) => (
+  // dummy invisible Line forces recharts to lay out the axis.
+  const stickyYAxis = (max: number) => (
     <div className={styles.stickyAxis} aria-hidden="true">
       <ResponsiveContainer width="100%" height={260}>
         <LineChart
@@ -277,25 +276,13 @@ export default function BudgetChartsSection({
             type="number"
             domain={[0, max]}
             ticks={ticksFor(max)}
-            width={80}
+            width={64}
             fontSize={12}
             tick={{ fill: "var(--text-muted)", fontSize: 12 }}
             tickMargin={4}
             axisLine={{ stroke: "var(--card-edge)" }}
             tickLine={{ stroke: "var(--card-edge)" }}
             tickFormatter={dollars}
-            label={{
-              value: label,
-              angle: -90,
-              position: "insideLeft",
-              offset: 0,
-              style: {
-                fill: "var(--text-muted)",
-                fontSize: 11,
-                fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
-                textAnchor: "middle",
-              },
-            }}
           />
           <XAxis dataKey="month" height={30} tick={false} axisLine={false} tickLine={false} />
         </LineChart>
@@ -369,7 +356,7 @@ export default function BudgetChartsSection({
       <div className={styles.card}>
         <h2 className={styles.cardHeading}>Monthly spending</h2>
         <div className={styles.stickyChart}>
-          {stickyYAxis(barMax, "Spend (CAD)")}
+          {stickyYAxis(barMax)}
           <div className={styles.chartScroll}>
             <div
               className={styles.chartBox}
@@ -417,7 +404,7 @@ export default function BudgetChartsSection({
         <div className={styles.card}>
           <h2 className={styles.cardHeading}>Card bills by month</h2>
           <div className={styles.stickyChart}>
-            {stickyYAxis(lineMax, "Bill total (CAD)")}
+            {stickyYAxis(lineMax)}
             <div className={styles.chartScroll}>
               <div
                 className={styles.chartBox}
