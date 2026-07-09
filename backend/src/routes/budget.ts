@@ -117,6 +117,12 @@ async function createBudgetTables() {
     ALTER TABLE budget_statements
     ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'pdf'
   `);
+  // Order the entry appears in on the bill (0-based; 0 also covers rows that
+  // predate this column, which fall back to date ordering).
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE budget_entries
+    ADD COLUMN IF NOT EXISTS position INTEGER NOT NULL DEFAULT 0
+  `);
 }
 
 type StatementRow = {
@@ -344,7 +350,8 @@ router.post("/statements", uploadPdf, async (req, res) => {
 
         const entries: EntryRow[] = [];
         let skippedDuplicates = 0;
-        for (const e of s.entries) {
+        for (let position = 0; position < s.entries.length; position++) {
+          const e = s.entries[position];
           // The same transaction can arrive via different formats (a May CSV
           // and a May PDF); never record it twice. Same-statement repeats are
           // allowed — a single document listing identical rows is authoritative.
@@ -364,10 +371,11 @@ router.post("/statements", uploadPdf, async (req, res) => {
           const rows = await tx.$queryRaw<EntryRow[]>`
             INSERT INTO budget_entries (
               statement_id, trans_date, posting_date, description,
-              amount_cents, is_credit, category
+              amount_cents, is_credit, category, position
             ) VALUES (
               ${statement.id}, ${e.transDate}::date, ${e.postingDate}::date,
-              ${e.description}, ${toCents(e.amount)}, ${e.isCredit}, ${e.category}
+              ${e.description}, ${toCents(e.amount)}, ${e.isCredit}, ${e.category},
+              ${position}
             )
             RETURNING id, statement_id, trans_date, posting_date, description,
                       amount_cents, is_credit, category
@@ -430,15 +438,18 @@ router.get("/entries", async (req, res) => {
     const category = q("category");
     const from = ISO_DAY.test(q("from") ?? "") ? q("from") : null;
     const to = ISO_DAY.test(q("to") ?? "") ? q("to") : null;
+    // Newest statement first; within a statement, the order the entries
+    // appear on the bill (position; pre-column rows fall back to dates).
     const rows = await prisma.$queryRaw<EntryRow[]>`
-      SELECT id, statement_id, trans_date, posting_date, description,
-             amount_cents, is_credit, category
-      FROM budget_entries
-      WHERE category <> 'Card Payment'
-        AND (${category}::text IS NULL OR category = ${category})
-        AND (${from}::date IS NULL OR trans_date >= ${from}::date)
-        AND (${to}::date IS NULL OR trans_date <= ${to}::date)
-      ORDER BY trans_date DESC, posting_date DESC
+      SELECT e.id, e.statement_id, e.trans_date, e.posting_date, e.description,
+             e.amount_cents, e.is_credit, e.category
+      FROM budget_entries e
+      JOIN budget_statements s ON s.id = e.statement_id
+      WHERE e.category <> 'Card Payment'
+        AND (${category}::text IS NULL OR e.category = ${category})
+        AND (${from}::date IS NULL OR e.trans_date >= ${from}::date)
+        AND (${to}::date IS NULL OR e.trans_date <= ${to}::date)
+      ORDER BY s.statement_date DESC, e.position ASC, e.trans_date ASC, e.posting_date ASC
       LIMIT 500
     `;
     res.json(rows.map(toEntry));
@@ -458,7 +469,7 @@ router.get("/statements/:id/entries", async (req, res) => {
              amount_cents, is_credit, category
       FROM budget_entries
       WHERE statement_id = ${req.params.id}
-      ORDER BY trans_date ASC, posting_date ASC
+      ORDER BY position ASC, trans_date ASC, posting_date ASC
     `;
     res.json(rows.map(toEntry));
   } catch (error) {

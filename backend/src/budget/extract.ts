@@ -58,6 +58,7 @@ Rules:
   immediately by the amount ("480.96") — never absorb the amount's digits into
   the account number or vice versa. The amount is the full final monetary value
   on the line.
+- Return transactions in exactly the order they appear on the statement.
 - Do not invent, merge, or drop transactions or accounts.`;
 
 const ENTRY_SCHEMA = {
