@@ -1,0 +1,536 @@
+/* Budgeting dashboard — same developer-dashboard aesthetic as Dashboard.module.css */
+
+.warningBanner {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border: 1px solid color-mix(in srgb, #e5a50a 60%, var(--card-edge));
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #e5a50a 8%, var(--card));
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.statTile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+}
+
+.statLabel {
+  font-size: 0.65rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.statValue {
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+}
+
+.statHint {
+  font-size: 0.7rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+/* ----- Insights: projection + AI recommendations side by side ----- */
+.insightsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.projectionList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.projectionItem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  border-bottom: 1px solid color-mix(in srgb, var(--card-edge) 50%, transparent);
+  padding-bottom: 0.3rem;
+}
+
+.recList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.recItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+/* Upload and transactions each take a full-width row. */
+.lowerGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+}
+
+.cardHeading {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+}
+
+.cardSubheading {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.5rem 1rem;
+  border: 1px dashed var(--card-edge);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.dropzoneActive {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--card));
+}
+
+.dropzoneText {
+  margin: 0;
+  font-size: 0.8rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-muted);
+}
+
+.btn {
+  padding: 0.35rem 0.9rem;
+  font-size: 0.78rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnDanger {
+  composes: btn;
+  color: #d64545;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: #d64545;
+}
+
+.mutedText {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.uploadPreview {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 8px;
+}
+
+.uploadPreviewTitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.statementList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pageFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pageFooter .statementActions {
+  align-items: center;
+}
+
+.statementListFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.statementItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+}
+
+.tableHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.select {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+  background: var(--card);
+  border: 1px solid var(--card-edge);
+  border-radius: 6px;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.65rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--card-edge);
+}
+
+.table td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--card-edge) 50%, transparent);
+  color: var(--text-main);
+}
+
+.descCell {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* .table th's text-align:left outranks a bare class — pin both cells. */
+.table th.amountCol,
+.table td.amountCol {
+  text-align: right;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Credits are denoted by color alone (owner preference: red, no minus sign);
+   debit rows keep the default ink. */
+.creditAmount {
+  color: #d64545;
+}
+
+.validText {
+  margin: 0;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--status-online, #2f9e44);
+}
+
+.statementActions {
+  display: flex;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+/* ----- Review modal ----- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: min(920px, 100%);
+  max-height: min(85vh, 900px);
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+}
+
+/* Expanded chart modal: wider than the review modal, chart fills it. */
+.chartModal {
+  width: min(1200px, 100%);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.descInput {
+  width: 100%;
+  min-width: 220px;
+}
+
+/* Transaction name doubles as its edit affordance. */
+.nameButton {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nameButton:hover,
+.nameButton:focus-visible {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.amountInput {
+  width: 110px;
+  text-align: right;
+}
+
+/* ----- Transactions filter panel ----- */
+.filterPanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 96%, var(--bg-1));
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filterLabel {
+  font-size: 0.65rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* ----- Charts -----
+   Categorical palette (dataviz skill, references/palette.md) — 8 fixed
+   slots in hue order: blue, aqua, yellow, green, violet, red, magenta,
+   orange. Default values are the "dark" steps (this site's default themes
+   all use dark card surfaces); the [data-theme="light"] override below
+   swaps in the "light" steps for the light theme. */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+
+  --series-1: #3987e5;
+  --series-2: #199e70;
+  --series-3: #c98500;
+  --series-4: #008300;
+  --series-5: #9085e9;
+  --series-6: #e66767;
+  --series-7: #d55181;
+  --series-8: #d95926;
+}
+
+:global([data-theme="light"]) .chartsGrid {
+  --series-1: #2a78d6;
+  --series-2: #1baf7a;
+  --series-3: #eda100;
+  --series-4: #008300;
+  --series-5: #4a3aa7;
+  --series-6: #e34948;
+  --series-7: #e87ba4;
+  --series-8: #eb6834;
+}
+
+.chartBox {
+  width: 100%;
+  min-height: 260px;
+}
+
+/* Time charts wider than 5 months scroll sideways inside their card; the
+   value axis sits in a pinned pane to the left of the scroll area. */
+.stickyChart {
+  display: flex;
+  align-items: stretch;
+}
+
+.stickyAxis {
+  flex: 0 0 72px;
+}
+
+.chartScroll {
+  overflow-x: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ----- Scrollbars: thin, theme-colored, rounded ----- */
+.chartScroll,
+.tableScroll,
+.modal,
+.statementList {
+  scrollbar-width: thin;
+  scrollbar-color: var(--card-edge) transparent;
+}
+
+.chartScroll::-webkit-scrollbar,
+.tableScroll::-webkit-scrollbar,
+.modal::-webkit-scrollbar,
+.statementList::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.chartScroll::-webkit-scrollbar-track,
+.tableScroll::-webkit-scrollbar-track,
+.modal::-webkit-scrollbar-track,
+.statementList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chartScroll::-webkit-scrollbar-thumb,
+.tableScroll::-webkit-scrollbar-thumb,
+.modal::-webkit-scrollbar-thumb,
+.statementList::-webkit-scrollbar-thumb {
+  background: var(--card-edge);
+  border-radius: 999px;
+}
+
+.chartScroll::-webkit-scrollbar-thumb:hover,
+.tableScroll::-webkit-scrollbar-thumb:hover,
+.modal::-webkit-scrollbar-thumb:hover,
+.statementList::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Shared legend spanning the charts grid — one legend for all charts. */
+.chartLegend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+}
+
+.chartLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}

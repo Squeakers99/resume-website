@@ -26,7 +26,9 @@ async function dashboardFetch(path: string, init?: RequestInit): Promise<Respons
     cache: "no-store",
     headers: {
       "x-dashboard-key": key,
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...(init?.body && !(init.body instanceof FormData)
+        ? { "Content-Type": "application/json" }
+        : {}),
     },
   });
 
@@ -95,4 +97,195 @@ export async function patchProjectImages(
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+// ----- Budgeting dashboard -----
+
+export type BudgetAccountType = "credit_card" | "chequing" | "savings";
+
+export type BudgetStatement = {
+  id: string;
+  source: string;
+  accountType: BudgetAccountType;
+  documentId: string | null;
+  origin: "pdf" | "csv";
+  statementDate: string;
+  periodStart: string;
+  periodEnd: string;
+  previousBalance: number;
+  paymentsCredits: number;
+  purchasesTotal: number;
+  totalBalance: number;
+  validationStatus: "valid" | "mismatch";
+  extractedPurchasesSum: number;
+  uploadedAt: string;
+  entryCount?: number;
+};
+
+export type BudgetEntry = {
+  id: string;
+  statementId: string;
+  transDate: string;
+  postingDate: string;
+  description: string;
+  amount: number;
+  isCredit: boolean;
+  category: string;
+  recurring: boolean;
+};
+
+export type BudgetSummary = {
+  latestCard: BudgetStatement | null;
+  latestChequing: BudgetStatement | null;
+  latestSavings: BudgetStatement | null;
+  statementCount: number;
+  categoryTotals: Array<{ category: string; total: number }>;
+  cardBills: Array<{
+    month: string;
+    total: number;
+    chequing: number | null;
+    savings: number | null;
+  }>;
+  monthlyByCategory: Array<{ month: string; category: string; total: number }>;
+};
+
+// One uploaded PDF can contain several account sections.
+export type BudgetUploadResult = {
+  document: { id: string; filename: string; s3Key: string };
+  results: Array<{
+    statement: BudgetStatement;
+    entries: BudgetEntry[];
+    problems: string[];
+    skippedDuplicates: number;
+    learnedCategories: number;
+  }>;
+};
+
+export async function uploadBudgetStatement(fd: FormData): Promise<BudgetUploadResult> {
+  const res = await dashboardFetch("/budget/statements", { method: "POST", body: fd });
+  return res.json();
+}
+
+export async function listBudgetStatements(): Promise<BudgetStatement[]> {
+  const res = await dashboardFetch("/budget/statements");
+  return res.json();
+}
+
+export async function listBudgetEntries(filters?: {
+  category?: string;
+  from?: string;
+  to?: string;
+}): Promise<BudgetEntry[]> {
+  const params = new URLSearchParams();
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.from) params.set("from", filters.from);
+  if (filters?.to) params.set("to", filters.to);
+  const qs = params.size ? `?${params.toString()}` : "";
+  const res = await dashboardFetch(`/budget/entries${qs}`);
+  return res.json();
+}
+
+export type BudgetStatementPatch = {
+  source?: string;
+  statementDate?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  previousBalance?: number;
+  paymentsCredits?: number;
+  purchasesTotal?: number;
+  totalBalance?: number;
+};
+
+export type BudgetEntryPatch = {
+  category?: string;
+  description?: string;
+  transDate?: string;
+  postingDate?: string;
+  amount?: number;
+  isCredit?: boolean;
+  recurring?: boolean;
+};
+
+export type BudgetEntryPatchResult = {
+  entry: BudgetEntry;
+  statement: BudgetStatement | null;
+  problems: string[];
+};
+
+export type BudgetStatementPatchResult = {
+  statement: BudgetStatement;
+  problems: string[];
+};
+
+export async function patchBudgetEntry(
+  id: string,
+  patch: BudgetEntryPatch
+): Promise<BudgetEntryPatchResult> {
+  const res = await dashboardFetch(`/budget/entries/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return res.json();
+}
+
+export async function patchBudgetStatement(
+  id: string,
+  patch: BudgetStatementPatch
+): Promise<BudgetStatementPatchResult> {
+  const res = await dashboardFetch(`/budget/statements/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return res.json();
+}
+
+// Every entry of one statement, including hidden Card Payment rows.
+export async function listStatementEntries(id: string): Promise<BudgetEntry[]> {
+  const res = await dashboardFetch(
+    `/budget/statements/${encodeURIComponent(id)}/entries`
+  );
+  return res.json();
+}
+
+export async function deleteBudgetStatement(id: string): Promise<void> {
+  await dashboardFetch(`/budget/statements/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function getBudgetSummary(): Promise<BudgetSummary> {
+  const res = await dashboardFetch("/budget/summary");
+  return res.json();
+}
+
+export type BudgetInsights = {
+  projection: {
+    month: string;
+    total: number;
+    byCategory: Array<{ category: string; projected: number }>;
+    monthsUsed: number;
+    reasoning?: string;
+  } | null;
+  projectionSource: "ai" | "trend";
+  recommendations: Array<{ title: string; detail: string }> | null;
+  generatedAt: string | null;
+  stale: boolean;
+};
+
+export async function getBudgetInsights(): Promise<BudgetInsights> {
+  const res = await dashboardFetch("/budget/insights");
+  return res.json();
+}
+
+export async function refreshBudgetInsights(): Promise<BudgetInsights> {
+  const res = await dashboardFetch("/budget/insights/refresh", { method: "POST" });
+  return res.json();
+}
+
+export async function detectRecurring(): Promise<{ marked: number }> {
+  const res = await dashboardFetch("/budget/recurring/detect", { method: "POST" });
+  return res.json();
+}
+
+export async function listRecurring(): Promise<BudgetEntry[]> {
+  const res = await dashboardFetch("/budget/recurring");
+  return res.json();
 }

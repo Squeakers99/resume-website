@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { prisma } from "../db/prisma";
 import { createProjectHandler } from "./projects";
+import budgetRouter from "./budget";
 
 const router = Router();
+
+router.use("/budget", budgetRouter);
 
 const TASK_STATUSES = ["backlog", "todo", "progress", "done"];
 const TASK_PRIORITIES = ["Low", "Medium", "High"];

@@ -1,4 +1,5 @@
 import { getOwnerSession, signOut } from "@/lib/auth";
+import DashboardTitleMenu from "./DashboardTitleMenu";
 import styles from "./Dashboard.module.css";
 
 type Props = {
@@ -11,8 +12,7 @@ export default async function DashboardTitleSection({ backendConnected }: Props)
   return (
     <section className={styles.titleSection} aria-label="Dashboard title and status">
       <div className={styles.titleSectionLeft}>
-        <h1 className={styles.titleSectionHeading}>/dashboard</h1>
-        <span className={styles.titleSectionSubtitle}>Workspace</span>
+        <DashboardTitleMenu />
       </div>
       <div className={styles.titleSectionMeta}>
         <div className={styles.titleSectionAuth}>

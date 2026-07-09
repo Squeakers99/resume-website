@@ -66,6 +66,7 @@ docs/PROJECT_PLAN.md
 .claude/
 .playwright-mcp/
 .remember/
+graphify-out/
 
 # ------------------------------
 # UI concept mockups (local reference only)
@@ -75,3 +76,8 @@ ui-concepts/
 # Design specs (local reference only)
 # ------------------------------
 docs/superpowers/
+
+# ------------------------------
+# Miscellaneous
+# ------------------------------
+bill-examples/
