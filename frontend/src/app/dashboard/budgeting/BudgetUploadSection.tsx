@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import type { BudgetStatement, BudgetUploadResult } from "@/lib/server-api";
 import { deleteStatementAction, uploadStatementAction } from "./actions";
+import { formatDay } from "./formatDate";
 import styles from "./Budgeting.module.css";
 
 type Props = {
@@ -101,7 +102,7 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
             <div key={r.statement.id}>
               <p className={styles.uploadPreviewTitle}>
                 {r.entries.length} transactions from {r.statement.source} (
-                {r.statement.statementDate})
+                {formatDay(r.statement.statementDate)})
                 {r.statement.validationStatus === "mismatch" && (
                   <strong> — totals mismatch, review below</strong>
                 )}
@@ -124,7 +125,7 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
           {statements.map((s) => (
             <li key={s.id} className={styles.statementItem}>
               <span>
-                {s.statementDate} · {s.source} · {s.entryCount ?? "?"} entries
+                {formatDay(s.statementDate)} · {s.source} · {s.entryCount ?? "?"} entries
                 {s.validationStatus === "mismatch" && (
                   <strong className={styles.errorText}> · mismatch</strong>
                 )}
@@ -134,7 +135,7 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
                 className={styles.btnDanger}
                 disabled={isPending}
                 onClick={() => onDelete(s.id)}
-                aria-label={`Delete ${s.source} ${s.statementDate} statement`}
+                aria-label={`Delete ${s.source} ${formatDay(s.statementDate)} statement`}
               >
                 Delete
               </button>

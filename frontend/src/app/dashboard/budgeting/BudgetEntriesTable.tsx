@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { BudgetEntry } from "@/lib/server-api";
 import { BUDGET_CATEGORIES } from "./budgetCategories";
+import { formatDay } from "./formatDate";
 import { recategorizeEntryAction } from "./actions";
 import styles from "./Budgeting.module.css";
 
@@ -66,7 +67,7 @@ export default function BudgetEntriesTable({ entries }: Props) {
             <tbody>
               {visible.map((e) => (
                 <tr key={e.id} className={e.isCredit ? styles.creditRow : ""}>
-                  <td>{e.transDate}</td>
+                  <td>{formatDay(e.transDate)}</td>
                   <td className={styles.descCell}>{e.description}</td>
                   <td className={styles.amountCol}>
                     {e.isCredit ? `−${money(e.amount)}` : money(e.amount)}

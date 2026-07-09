@@ -10,6 +10,7 @@ import {
 import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import styles from "./Budgeting.module.css";
+import { formatDay } from "./formatDate";
 import BudgetUploadSection from "./BudgetUploadSection";
 import BudgetEntriesTable from "./BudgetEntriesTable";
 import BudgetChartsSection from "./BudgetChartsSection";
@@ -63,7 +64,7 @@ export default async function BudgetingPage() {
           </span>
           <span className={styles.statHint}>
             {latestChequing
-              ? `chequing · as of ${latestChequing.statementDate}`
+              ? `chequing · as of ${formatDay(latestChequing.statementDate)}`
               : "upload a chequing statement"}
           </span>
         </div>
@@ -73,7 +74,7 @@ export default async function BudgetingPage() {
             {latestSavings ? money(latestSavings.totalBalance) : "—"}
           </span>
           <span className={styles.statHint}>
-            {latestSavings ? `as of ${latestSavings.statementDate}` : ""}
+            {latestSavings ? `as of ${formatDay(latestSavings.statementDate)}` : ""}
           </span>
         </div>
         <div className={styles.statTile}>
@@ -82,7 +83,7 @@ export default async function BudgetingPage() {
             {latestCard ? money(latestCard.totalBalance) : "—"}
           </span>
           <span className={styles.statHint}>
-            {latestCard ? `owing · as of ${latestCard.statementDate}` : ""}
+            {latestCard ? `owing · as of ${formatDay(latestCard.statementDate)}` : ""}
           </span>
         </div>
         <div className={styles.statTile}>
@@ -91,7 +92,9 @@ export default async function BudgetingPage() {
             {latestCard ? money(latestCard.purchasesTotal) : "—"}
           </span>
           <span className={styles.statHint}>
-            {latestCard ? `${latestCard.periodStart} → ${latestCard.periodEnd}` : ""}
+            {latestCard
+              ? `${formatDay(latestCard.periodStart)} → ${formatDay(latestCard.periodEnd)}`
+              : ""}
           </span>
         </div>
         <div className={styles.statTile}>

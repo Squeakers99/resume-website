@@ -226,9 +226,13 @@
   white-space: nowrap;
 }
 
-.amountCol {
+/* .table th's text-align:left outranks a bare class — pin both cells. */
+.table th.amountCol,
+.table td.amountCol {
   text-align: right;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .creditRow td {

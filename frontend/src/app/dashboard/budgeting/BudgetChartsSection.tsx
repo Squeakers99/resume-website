@@ -14,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { formatMonth } from "./formatDate";
 import styles from "./Budgeting.module.css";
 
 type CategoryTotal = { category: string; total: number };
@@ -164,7 +165,7 @@ export default function BudgetChartsSection({
             <option value="all">All time</option>
             {months.map((m) => (
               <option key={m} value={m}>
-                {m}
+                {formatMonth(m)}
               </option>
             ))}
           </select>
@@ -210,6 +211,7 @@ export default function BudgetChartsSection({
                 tick={{ fill: "var(--text-muted)" }}
                 axisLine={{ stroke: "var(--card-edge)" }}
                 tickLine={{ stroke: "var(--card-edge)" }}
+                tickFormatter={(m) => formatMonth(String(m))}
               />
               <YAxis
                 fontSize={12}
@@ -220,6 +222,7 @@ export default function BudgetChartsSection({
               />
               <Tooltip
                 formatter={(value) => money(Number(value))}
+                labelFormatter={(label) => formatMonth(String(label))}
                 contentStyle={tooltipContentStyle}
                 itemStyle={tooltipItemStyle}
                 labelStyle={tooltipLabelStyle}
