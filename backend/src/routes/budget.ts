@@ -14,8 +14,10 @@ import {
 } from "../budget/domain";
 import { ExtractionError, extractStatementsFromText } from "../budget/extract";
 import {
-  generateRecommendations,
+  generateInsights,
+  nextMonthLabel,
   projectSpending,
+  type AiProjection,
   type Recommendation,
 } from "../budget/insights";
 import { deleteStatementPdf, putStatementPdf, statementKeyPrefix } from "../lib/s3";
@@ -138,6 +140,9 @@ async function createBudgetTables() {
       source_hash TEXT NOT NULL,
       generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE budget_insights ADD COLUMN IF NOT EXISTS projection TEXT
   `);
 }
 
@@ -666,6 +671,7 @@ async function insightsSourceHash(): Promise<string> {
 
 type InsightsRow = {
   recommendations: string;
+  projection: string | null;
   source_hash: string;
   generated_at: Date;
 };
@@ -676,14 +682,16 @@ async function buildInsightsResponse() {
     category: r.category,
     total: r.total_cents / 100,
   }));
-  const projection = projectSpending(monthly);
+  const trendProjection = projectSpending(monthly);
 
   const stored = await prisma.$queryRaw<InsightsRow[]>`
-    SELECT recommendations, source_hash, generated_at FROM budget_insights WHERE id = 1
+    SELECT recommendations, projection, source_hash, generated_at
+    FROM budget_insights WHERE id = 1
   `;
   const hash = await insightsSourceHash();
 
   let recommendations: Recommendation[] | null = null;
+  let aiProjection: AiProjection | null = null;
   let generatedAt: string | null = null;
   let stale = false;
   if (stored.length > 0) {
@@ -692,11 +700,35 @@ async function buildInsightsResponse() {
     } catch {
       recommendations = null;
     }
+    if (stored[0].projection) {
+      try {
+        aiProjection = JSON.parse(stored[0].projection) as AiProjection;
+      } catch {
+        aiProjection = null;
+      }
+    }
     generatedAt = stored[0].generated_at.toISOString();
     stale = stored[0].source_hash !== hash;
   }
 
-  return { projection, recommendations, generatedAt, stale };
+  // AI projection (pattern-aware) when generated; trend math as fallback.
+  const projection = aiProjection
+    ? {
+        month: aiProjection.month,
+        total: aiProjection.total,
+        byCategory: aiProjection.byCategory,
+        monthsUsed: trendProjection?.monthsUsed ?? 0,
+        reasoning: aiProjection.reasoning,
+      }
+    : trendProjection;
+
+  return {
+    projection,
+    projectionSource: aiProjection ? ("ai" as const) : ("trend" as const),
+    recommendations,
+    generatedAt,
+    stale,
+  };
 }
 
 router.get("/insights", async (_req, res) => {
@@ -739,7 +771,10 @@ router.post("/insights/refresh", async (_req, res) => {
       GROUP BY 1 ORDER BY 1 ASC
     `;
 
-    const recommendations = await generateRecommendations({
+    const months = [...new Set(monthly.map((m) => m.month))].sort();
+    const targetMonth = nextMonthLabel(months[months.length - 1]);
+
+    const { recommendations, projection } = await generateInsights({
       monthly,
       topExpenses: topExpenses.map((e) => ({
         date: isoDay(e.trans_date),
@@ -748,14 +783,17 @@ router.post("/insights/refresh", async (_req, res) => {
         category: e.category,
       })),
       cardBills: cardBills.map((b) => ({ month: b.month, total: b.total_cents / 100 })),
+      targetMonth,
     });
 
     const hash = await insightsSourceHash();
+    const projectionJson = projection ? JSON.stringify(projection) : null;
     await prisma.$executeRaw`
-      INSERT INTO budget_insights (id, recommendations, source_hash, generated_at)
-      VALUES (1, ${JSON.stringify(recommendations)}, ${hash}, NOW())
+      INSERT INTO budget_insights (id, recommendations, projection, source_hash, generated_at)
+      VALUES (1, ${JSON.stringify(recommendations)}, ${projectionJson}, ${hash}, NOW())
       ON CONFLICT (id) DO UPDATE
       SET recommendations = ${JSON.stringify(recommendations)},
+          projection = ${projectionJson},
           source_hash = ${hash},
           generated_at = NOW()
     `;

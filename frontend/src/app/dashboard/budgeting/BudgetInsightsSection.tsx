@@ -15,7 +15,8 @@ export default function BudgetInsightsSection({ insights }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const { projection, recommendations, generatedAt, stale } = insights;
+  const { projection, projectionSource, recommendations, generatedAt, stale } =
+    insights;
 
   const onRefresh = () => {
     setError(null);
@@ -32,8 +33,11 @@ export default function BudgetInsightsSection({ insights }: Props) {
         {projection ? (
           <>
             <p className={styles.mutedText}>
-              {formatMonth(projection.month)} estimate, from a linear trend over your
-              last {projection.monthsUsed} months:
+              {formatMonth(projection.month)} estimate,{" "}
+              {projectionSource === "ai"
+                ? "AI-modelled from your spending patterns"
+                : `from a linear trend over your last ${projection.monthsUsed} months (generate insights for the AI model)`}
+              :
             </p>
             <p className={styles.statValue}>{money(projection.total)}</p>
             <ul className={styles.projectionList}>
@@ -44,6 +48,9 @@ export default function BudgetInsightsSection({ insights }: Props) {
                 </li>
               ))}
             </ul>
+            {projection.reasoning && (
+              <p className={styles.mutedText}>{projection.reasoning}</p>
+            )}
           </>
         ) : (
           <p className={styles.mutedText}>

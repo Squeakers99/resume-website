@@ -76,17 +76,63 @@ export function projectSpending(
   };
 }
 
-const RECOMMENDATIONS_PROMPT = `You are a personal-finance analyst reviewing the
-owner's real spending data. Suggest 3 to 5 concrete, specific ways to cut
+export type AiProjection = {
+  month: string;
+  total: number;
+  byCategory: ProjectedCategory[];
+  reasoning: string;
+};
+
+// Guard the model's numbers before they reach storage/UI.
+export function validateAiProjection(
+  payload: unknown,
+  month: string
+): AiProjection | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const p = payload as { total?: unknown; by_category?: unknown; reasoning?: unknown };
+  if (typeof p.total !== "number" || !Number.isFinite(p.total)) return null;
+  const byCategory = Array.isArray(p.by_category)
+    ? p.by_category
+        .filter(
+          (c: { category?: unknown; projected?: unknown }) =>
+            typeof c?.category === "string" &&
+            typeof c?.projected === "number" &&
+            Number.isFinite(c.projected)
+        )
+        .map((c: { category: string; projected: number }) => ({
+          category: c.category,
+          projected: Math.max(0, Math.round(c.projected * 100) / 100),
+        }))
+        .slice(0, 8)
+    : [];
+  return {
+    month,
+    total: Math.max(0, Math.round(p.total * 100) / 100),
+    byCategory,
+    reasoning: typeof p.reasoning === "string" ? p.reasoning : "",
+  };
+}
+
+const INSIGHTS_PROMPT = `You are a personal-finance analyst reviewing the owner's
+real spending data.
+
+Task 1 — recommendations: suggest 3 to 5 concrete, specific ways to cut
 spending, grounded in the numbers you were given — reference actual categories,
 merchants, and amounts. No generic advice ("make a budget"), no advice about
 income, card payments, or transfers between the owner's own accounts. Keep each
-title under 8 words and each detail to 1-2 sentences.`;
+title under 8 words and each detail to 1-2 sentences.
 
-const RECOMMENDATIONS_SCHEMA = {
+Task 2 — projection: predict the owner's spending for the TARGET MONTH stated
+in the data, based on their patterns: distinguish recurring spending
+(subscriptions, groceries, regular habits) from one-off spikes (a single big
+purchase or transfer shouldn't be projected to repeat), and weight recent
+months more than old ones. Return the projected total, the projected amount
+per category you expect spending in, and one sentence of reasoning.`;
+
+const INSIGHTS_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["recommendations"],
+  required: ["recommendations", "projection"],
   properties: {
     recommendations: {
       type: "array",
@@ -100,20 +146,44 @@ const RECOMMENDATIONS_SCHEMA = {
         },
       },
     },
+    projection: {
+      type: "object",
+      additionalProperties: false,
+      required: ["total", "by_category", "reasoning"],
+      properties: {
+        total: { type: "number" },
+        by_category: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["category", "projected"],
+            properties: {
+              category: { type: "string" },
+              projected: { type: "number" },
+            },
+          },
+        },
+        reasoning: { type: "string" },
+      },
+    },
   },
 } as const;
 
-export async function generateRecommendations(input: {
+export async function generateInsights(input: {
   monthly: Array<{ month: string; category: string; total: number }>;
   topExpenses: Array<{ date: string; description: string; amount: number; category: string }>;
   cardBills: Array<{ month: string; total: number }>;
-}): Promise<Recommendation[]> {
+  targetMonth: string;
+}): Promise<{ recommendations: Recommendation[]; projection: AiProjection | null }> {
   if (!process.env.OPENAI_API_KEY) {
     throw new InsightsError("OPENAI_API_KEY is not set");
   }
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   const payload = [
+    `TARGET MONTH for the projection: ${input.targetMonth}`,
+    "",
     "Monthly spend by category:",
     ...input.monthly.map((m) => `${m.month} ${m.category}: $${m.total.toFixed(2)}`),
     "",
@@ -129,22 +199,22 @@ export async function generateRecommendations(input: {
   const completion = await client.chat.completions.create({
     model: "gpt-4.1-mini",
     messages: [
-      { role: "system", content: RECOMMENDATIONS_PROMPT },
+      { role: "system", content: INSIGHTS_PROMPT },
       { role: "user", content: payload },
     ],
     response_format: {
       type: "json_schema",
       json_schema: {
-        name: "spending_recommendations",
+        name: "spending_insights",
         strict: true,
-        schema: RECOMMENDATIONS_SCHEMA as unknown as Record<string, unknown>,
+        schema: INSIGHTS_SCHEMA as unknown as Record<string, unknown>,
       },
     },
   });
 
   const content = completion.choices[0]?.message?.content;
   if (!content) throw new InsightsError("model returned no content");
-  let parsed: { recommendations: Recommendation[] };
+  let parsed: { recommendations: Recommendation[]; projection: unknown };
   try {
     parsed = JSON.parse(content);
   } catch {
@@ -153,5 +223,8 @@ export async function generateRecommendations(input: {
   if (!Array.isArray(parsed.recommendations) || parsed.recommendations.length === 0) {
     throw new InsightsError("model returned no recommendations");
   }
-  return parsed.recommendations.slice(0, 5);
+  return {
+    recommendations: parsed.recommendations.slice(0, 5),
+    projection: validateAiProjection(parsed.projection, input.targetMonth),
+  };
 }

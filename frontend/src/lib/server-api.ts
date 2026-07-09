@@ -259,7 +259,9 @@ export type BudgetInsights = {
     total: number;
     byCategory: Array<{ category: string; projected: number }>;
     monthsUsed: number;
+    reasoning?: string;
   } | null;
+  projectionSource: "ai" | "trend";
   recommendations: Array<{ title: string; detail: string }> | null;
   generatedAt: string | null;
   stale: boolean;

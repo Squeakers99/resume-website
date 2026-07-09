@@ -42,6 +42,7 @@ export default async function BudgetingPage() {
   let statements: BudgetStatement[] = [];
   let insights: BudgetInsights = {
     projection: null,
+    projectionSource: "trend",
     recommendations: null,
     generatedAt: null,
     stale: false,
