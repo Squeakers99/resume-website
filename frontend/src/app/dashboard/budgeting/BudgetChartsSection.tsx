@@ -6,7 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Line,
   LineChart,
   Pie,
@@ -153,10 +152,27 @@ export default function BudgetChartsSection({
   };
   const tooltipItemStyle = { color: "var(--text-main)" };
   const tooltipLabelStyle = { color: "var(--text-muted)" };
-  const legendLabelStyle = { color: "var(--text-main)", fontSize: "0.75rem" };
+
+  // Wider than 5 months → the time charts scroll horizontally.
+  const timeChartMinWidth = (count: number) =>
+    count > 5 ? `${count * 90}px` : undefined;
 
   return (
     <section className={styles.chartsGrid} aria-label="Spending charts">
+      {/* One shared legend for every categorical chart. */}
+      <div className={styles.chartLegend} role="list" aria-label="Chart categories">
+        {displayOrder.map((c) => (
+          <span role="listitem" key={c} className={styles.chartLegendItem}>
+            <span
+              className={styles.legendSwatch}
+              style={{ background: colorFor(c) }}
+              aria-hidden="true"
+            />
+            {c}
+          </span>
+        ))}
+      </div>
+
       <div className={styles.card}>
         <div className={styles.tableHeader}>
           <h2 className={styles.cardHeading}>Spending by category</h2>
@@ -197,7 +213,6 @@ export default function BudgetChartsSection({
                 itemStyle={tooltipItemStyle}
                 labelStyle={tooltipLabelStyle}
               />
-              <Legend labelStyle={legendLabelStyle} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -205,7 +220,11 @@ export default function BudgetChartsSection({
 
       <div className={styles.card}>
         <h2 className={styles.cardHeading}>Monthly spending</h2>
-        <div className={styles.chartBox}>
+        <div className={styles.chartScroll}>
+          <div
+            className={styles.chartBox}
+            style={{ minWidth: timeChartMinWidth(barData.length) }}
+          >
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={barData}>
               <CartesianGrid stroke="var(--card-edge)" vertical={false} />
@@ -231,7 +250,6 @@ export default function BudgetChartsSection({
                 itemStyle={tooltipItemStyle}
                 labelStyle={tooltipLabelStyle}
               />
-              <Legend labelStyle={legendLabelStyle} />
               {displayOrder.map((c) => (
                 <Bar
                   key={c}
@@ -245,13 +263,18 @@ export default function BudgetChartsSection({
               ))}
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
       {cardBills.length > 0 && (
         <div className={styles.card}>
           <h2 className={styles.cardHeading}>Card bills by month</h2>
-          <div className={styles.chartBox}>
+          <div className={styles.chartScroll}>
+            <div
+              className={styles.chartBox}
+              style={{ minWidth: timeChartMinWidth(cardBills.length) }}
+            >
             <ResponsiveContainer width="100%" height={260}>
               {/* Single series: the title names it, so no legend (dataviz rule). */}
               <LineChart data={cardBills}>
@@ -288,6 +311,7 @@ export default function BudgetChartsSection({
                 />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </div>
         </div>
       )}

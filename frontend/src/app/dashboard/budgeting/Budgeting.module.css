@@ -399,3 +399,75 @@
   width: 100%;
   min-height: 260px;
 }
+
+/* Time charts wider than 5 months scroll sideways inside their card. */
+.chartScroll {
+  overflow-x: auto;
+}
+
+/* ----- Scrollbars: thin, theme-colored, rounded ----- */
+.chartScroll,
+.tableScroll,
+.modal,
+.statementList {
+  scrollbar-width: thin;
+  scrollbar-color: var(--card-edge) transparent;
+}
+
+.chartScroll::-webkit-scrollbar,
+.tableScroll::-webkit-scrollbar,
+.modal::-webkit-scrollbar,
+.statementList::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.chartScroll::-webkit-scrollbar-track,
+.tableScroll::-webkit-scrollbar-track,
+.modal::-webkit-scrollbar-track,
+.statementList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chartScroll::-webkit-scrollbar-thumb,
+.tableScroll::-webkit-scrollbar-thumb,
+.modal::-webkit-scrollbar-thumb,
+.statementList::-webkit-scrollbar-thumb {
+  background: var(--card-edge);
+  border-radius: 999px;
+}
+
+.chartScroll::-webkit-scrollbar-thumb:hover,
+.tableScroll::-webkit-scrollbar-thumb:hover,
+.modal::-webkit-scrollbar-thumb:hover,
+.statementList::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Shared legend spanning the charts grid — one legend for all charts. */
+.chartLegend {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
+}
+
+.chartLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--text-main);
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}

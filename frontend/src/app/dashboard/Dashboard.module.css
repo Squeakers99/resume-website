@@ -812,6 +812,24 @@
   background: var(--card);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
   scrollbar-width: thin;
+  scrollbar-color: var(--card-edge) transparent;
+}
+
+.titleMenuList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.titleMenuList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.titleMenuList::-webkit-scrollbar-thumb {
+  background: var(--card-edge);
+  border-radius: 999px;
+}
+
+.titleMenuList::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .titleMenuItem {
