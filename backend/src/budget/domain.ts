@@ -59,10 +59,9 @@ export const toCents = (dollars: number): number => Math.round(dollars * 100);
 
 const TOLERANCE_CENTS = 1;
 
-// Owner's card-total rule: total balance = all charges minus the extra TRSF
-// credits. The one TRSF equal to the printed "Previous total balance" is the
-// settlement payment and is excluded; credits that are not TRSFs are ignored
-// entirely.
+// Owner's card-total rule: total balance = all charges minus all credits,
+// except the one credit that paid off the previous bill — the credit whose
+// amount equals the printed "Previous total balance".
 export function computedCardTotalCents(
   entries: Array<Pick<ExtractedEntry, "amount" | "isCredit" | "description">>,
   previousBalanceCents: number
@@ -72,24 +71,23 @@ export function computedCardTotalCents(
     .reduce((sum, e) => sum + toCents(e.amount), 0);
 
   let settlementIgnored = false;
-  let trsfCents = 0;
+  let creditsCents = 0;
   for (const e of entries.filter((e) => e.isCredit)) {
-    if (!/TRSF/i.test(e.description)) continue; // non-TRSF credits ignored
     const cents = toCents(e.amount);
     if (!settlementIgnored && cents === previousBalanceCents) {
-      settlementIgnored = true;
+      settlementIgnored = true; // the payment that settled the previous bill
       continue;
     }
-    trsfCents += cents;
+    creditsCents += cents;
   }
-  return chargesCents - trsfCents;
+  return chargesCents - creditsCents;
 }
 
-export function trsfCreditsSumCents(
+export function allCreditsSumCents(
   entries: Array<Pick<ExtractedEntry, "amount" | "isCredit" | "description">>
 ): number {
   return entries
-    .filter((e) => e.isCredit && /TRSF/i.test(e.description))
+    .filter((e) => e.isCredit)
     .reduce((sum, e) => sum + toCents(e.amount), 0);
 }
 
@@ -106,16 +104,16 @@ export function validateStatement(s: ExtractedStatement): ValidationResult {
     const computedCents = computedCardTotalCents(s.entries, toCents(s.previousBalance));
     if (Math.abs(computedCents - toCents(s.totalBalance)) > TOLERANCE_CENTS) {
       problems.push(
-        `computed total ${(computedCents / 100).toFixed(2)} (charges minus credits, TRSF ignored) does not match total balance ${s.totalBalance.toFixed(2)}`
+        `computed total ${(computedCents / 100).toFixed(2)} (charges minus credits, settlement payment ignored) does not match total balance ${s.totalBalance.toFixed(2)}`
       );
     }
 
     // Owner rule: printed "Payments and credits" must equal the sum of ALL
-    // TRSF credits, including the settlement one excluded from the total.
-    const trsfSumCents = trsfCreditsSumCents(s.entries);
-    if (Math.abs(trsfSumCents - toCents(s.paymentsCredits)) > TOLERANCE_CENTS) {
+    // credits — TRSFs and other credits alike, settlement included.
+    const creditsSumCents = allCreditsSumCents(s.entries);
+    if (Math.abs(creditsSumCents - toCents(s.paymentsCredits)) > TOLERANCE_CENTS) {
       problems.push(
-        `payments and credits ${s.paymentsCredits.toFixed(2)} does not match the sum of TRSF entries ${(trsfSumCents / 100).toFixed(2)}`
+        `payments and credits ${s.paymentsCredits.toFixed(2)} does not match the sum of credits ${(creditsSumCents / 100).toFixed(2)}`
       );
     }
     return {

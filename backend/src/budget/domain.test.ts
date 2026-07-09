@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  allCreditsSumCents,
   BUDGET_CATEGORIES,
   computedCardTotalCents,
   toCents,
-  trsfCreditsSumCents,
   validateStatement,
   type ExtractedStatement,
 } from "./domain";
@@ -30,8 +30,8 @@ const baseStatement = (): ExtractedStatement => ({
     {
       transDate: "2026-06-08",
       postingDate: "2026-06-09",
-      description: "TRSF FROM/DE ACCT/CPT 3776-XXXX-387",
-      amount: 99.99, // extra TRSF beyond the settlement — subtracts from total
+      description: "PAYMENT RECEIVED - THANK YOU",
+      amount: 99.99, // non-settlement credit — subtracts from the total
       isCredit: true,
       category: "Card Payment",
     },
@@ -137,12 +137,13 @@ describe("validateStatement", () => {
     expect(validateStatement({ ...s, accountType: "credit_card" }).status).toBe("mismatch");
   });
 
-  it("ignores only the TRSF that settles the previous balance", () => {
-    // Base: TRSF 480.96 equals previousBalance 480.96 -> ignored; valid.
+  it("validates the real July statement exactly (owner's final rules)", () => {
+    // Total: 973.05 charges − 99.99 (settlement 480.96 excluded) = 873.06.
+    // Payments and credits: 480.96 + 99.99 = 580.95.
     expect(validateStatement(baseStatement()).status).toBe("valid");
   });
 
-  it("subtracts extra TRSF credits that do not match the previous balance", () => {
+  it("subtracts every credit except the settlement payment", () => {
     const s = baseStatement();
     s.entries.push({
       transDate: "2026-06-20",
@@ -156,42 +157,30 @@ describe("validateStatement", () => {
     expect(computedCardTotalCents(s.entries, toCents(s.previousBalance))).toBe(82306);
     expect(validateStatement(s).status).toBe("mismatch");
     s.totalBalance = 823.06;
-    s.paymentsCredits = 630.95; // TRSF sum rule: 480.96 + 99.99 + 50.00
+    s.paymentsCredits = 630.95; // all credits: 480.96 + 99.99 + 50.00
     expect(validateStatement(s).status).toBe("valid");
   });
 
-  it("flags a mis-read settlement TRSF (no longer matches previous balance)", () => {
+  it("flags a mis-read settlement payment (no longer matches previous balance)", () => {
     const s = baseStatement();
     s.entries[0].amount = 0.96; // TRSF read as 0.96 instead of 480.96
     const result = validateStatement(s);
     expect(result.status).toBe("mismatch");
     expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
+    expect(result.problems.some((p) => p.includes("payments and credits"))).toBe(true);
   });
 
-  it("flags a mis-read extra TRSF credit on a card", () => {
+  it("flags a mis-read non-settlement credit on a card", () => {
     const s = baseStatement();
-    s.entries[1].amount = 9.99; // extra TRSF read as 9.99 instead of 99.99
+    s.entries[1].amount = 9.99; // PAYMENT RECEIVED read as 9.99 instead of 99.99
     const result = validateStatement(s);
     expect(result.status).toBe("mismatch");
     expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
   });
 
-  it("ignores non-TRSF credits in the total and flags the TRSF-sum check", () => {
-    const s = baseStatement();
-    // A non-TRSF credit is ignored by the total rule entirely and no longer
-    // counts toward the TRSF sum.
-    s.entries[1].description = "PAYMENT RECEIVED - THANK YOU";
-    s.totalBalance = 973.05; // charges only — the 99.99 credit is ignored
-    const result = validateStatement(s);
-    expect(computedCardTotalCents(s.entries, toCents(s.previousBalance))).toBe(97305);
-    expect(result.problems.some((p) => p.includes("computed total"))).toBe(false);
-    expect(result.problems.some((p) => p.includes("payments and credits"))).toBe(true);
-    expect(result.status).toBe("mismatch");
-  });
-
-  it("computes the card total with the settlement TRSF ignored", () => {
+  it("computes the card total with the settlement payment ignored", () => {
     const s = baseStatement();
     expect(computedCardTotalCents(s.entries, toCents(s.previousBalance))).toBe(87306);
-    expect(trsfCreditsSumCents(s.entries)).toBe(58095);
+    expect(allCreditsSumCents(s.entries)).toBe(58095);
   });
 });
