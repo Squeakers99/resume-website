@@ -85,6 +85,35 @@ function renderPieLabel(props: {
   );
 }
 
+// Monthly-spending tooltip: renders only while the pointer is on an actual
+// bar (recharts' default shows the nearest month from anywhere in the plot).
+function MonthTooltip({
+  active,
+  payload,
+  label,
+  hoveredMonth,
+}: {
+  active?: boolean;
+  payload?: ReadonlyArray<{ dataKey?: unknown; value?: number | string }>;
+  label?: unknown;
+  hoveredMonth: string | null;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  if (!hoveredMonth || String(label) !== hoveredMonth) return null;
+  const money = (n: number) =>
+    n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
+  return (
+    <div style={tooltipContentStyle}>
+      <p style={tooltipLabelStyle}>{formatMonth(String(label))}</p>
+      {payload.map((p) => (
+        <p key={String(p.dataKey)} style={tooltipItemStyle}>
+          {String(p.dataKey)}: {money(Number(p.value))}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 // Card-bills hover: the bill total plus that month's bank balances.
 function BillTooltip({
   active,
@@ -334,14 +363,7 @@ export default function BudgetChartsSection({
         tickLine={{ stroke: "var(--card-edge)" }}
         tickFormatter={dollars}
       />
-      <Tooltip
-        cursor={false}
-        formatter={(value) => money(Number(value))}
-        labelFormatter={(label) => formatMonth(String(label))}
-        contentStyle={tooltipContentStyle}
-        itemStyle={tooltipItemStyle}
-        labelStyle={tooltipLabelStyle}
-      />
+      <Tooltip cursor={false} content={<MonthTooltip hoveredMonth={hoveredMonth} />} />
       {displayOrder.map((c) => (
         <Bar
           key={c}
