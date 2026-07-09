@@ -47,23 +47,22 @@ const tooltipLabelStyle = { color: "var(--text-muted)", margin: 0 };
 
 const RADIAN = Math.PI / 180;
 
-// Percentage labels beside donut slices; slivers under 5% stay label-free
-// (their share is still in the tooltip) to avoid collisions.
+// Percentage label beside every donut slice, tinted in the slice's color.
 function renderPieLabel(props: {
   cx?: number;
   cy?: number;
   midAngle?: number;
   outerRadius?: number;
   percent?: number;
+  fill?: string;
 }) {
-  const { cx, cy, midAngle, outerRadius, percent } = props;
+  const { cx, cy, midAngle, outerRadius, percent, fill } = props;
   if (
     cx === undefined ||
     cy === undefined ||
     midAngle === undefined ||
     outerRadius === undefined ||
-    !percent ||
-    percent < 0.05
+    !percent
   ) {
     return null;
   }
@@ -74,13 +73,14 @@ function renderPieLabel(props: {
     <text
       x={x}
       y={y}
-      fill="var(--text-muted)"
+      fill={fill ?? "var(--text-muted)"}
       fontSize={11}
+      fontWeight={600}
       fontFamily="var(--font-geist-mono), ui-monospace, monospace"
       textAnchor={x > cx ? "start" : "end"}
       dominantBaseline="central"
     >
-      {`${Math.round(percent * 100)}%`}
+      {`${percent >= 0.01 ? Math.round(percent * 100) : "<1"}%`}
     </text>
   );
 }
