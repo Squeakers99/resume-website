@@ -45,6 +45,46 @@ const tooltipContentStyle = {
 const tooltipItemStyle = { color: "var(--text-main)", margin: 0 };
 const tooltipLabelStyle = { color: "var(--text-muted)", margin: 0 };
 
+const RADIAN = Math.PI / 180;
+
+// Percentage labels beside donut slices; slivers under 5% stay label-free
+// (their share is still in the tooltip) to avoid collisions.
+function renderPieLabel(props: {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  outerRadius?: number;
+  percent?: number;
+}) {
+  const { cx, cy, midAngle, outerRadius, percent } = props;
+  if (
+    cx === undefined ||
+    cy === undefined ||
+    midAngle === undefined ||
+    outerRadius === undefined ||
+    !percent ||
+    percent < 0.05
+  ) {
+    return null;
+  }
+  const r = outerRadius + 12;
+  const x = cx + r * Math.cos(-midAngle * RADIAN);
+  const y = cy + r * Math.sin(-midAngle * RADIAN);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="var(--text-muted)"
+      fontSize={11}
+      fontFamily="var(--font-geist-mono), ui-monospace, monospace"
+      textAnchor={x > cx ? "start" : "end"}
+      dominantBaseline="central"
+    >
+      {`${Math.round(percent * 100)}%`}
+    </text>
+  );
+}
+
 // Card-bills hover: the bill total plus that month's bank balances.
 function BillTooltip({
   active,
@@ -294,11 +334,13 @@ export default function BudgetChartsSection({
                 data={donutData}
                 dataKey="total"
                 nameKey="category"
-                innerRadius="55%"
-                outerRadius="85%"
+                innerRadius="50%"
+                outerRadius="75%"
                 paddingAngle={2}
                 stroke="var(--card)"
                 strokeWidth={2}
+                label={renderPieLabel}
+                labelLine={false}
               >
                 {donutData.map((d) => (
                   <Cell key={d.category} fill={colorFor(d.category)} />
