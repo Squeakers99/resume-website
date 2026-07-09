@@ -59,10 +59,10 @@ export const toCents = (dollars: number): number => Math.round(dollars * 100);
 
 const TOLERANCE_CENTS = 1;
 
-// Owner's card-total rule: total balance = all charges minus all credits,
-// ignoring only THE TRSF credit that settles the previous cycle — the one
-// whose amount equals the statement's printed "Previous total balance".
-// Any other TRSF credit subtracts like a normal payment.
+// Owner's card-total rule: total balance = all charges minus the extra TRSF
+// credits. The one TRSF equal to the printed "Previous total balance" is the
+// settlement payment and is excluded; credits that are not TRSFs are ignored
+// entirely.
 export function computedCardTotalCents(
   entries: Array<Pick<ExtractedEntry, "amount" | "isCredit" | "description">>,
   previousBalanceCents: number
@@ -72,20 +72,17 @@ export function computedCardTotalCents(
     .reduce((sum, e) => sum + toCents(e.amount), 0);
 
   let settlementIgnored = false;
-  let creditsCents = 0;
+  let trsfCents = 0;
   for (const e of entries.filter((e) => e.isCredit)) {
+    if (!/TRSF/i.test(e.description)) continue; // non-TRSF credits ignored
     const cents = toCents(e.amount);
-    if (
-      !settlementIgnored &&
-      /TRSF/i.test(e.description) &&
-      cents === previousBalanceCents
-    ) {
+    if (!settlementIgnored && cents === previousBalanceCents) {
       settlementIgnored = true;
       continue;
     }
-    creditsCents += cents;
+    trsfCents += cents;
   }
-  return chargesCents - creditsCents;
+  return chargesCents - trsfCents;
 }
 
 export function trsfCreditsSumCents(

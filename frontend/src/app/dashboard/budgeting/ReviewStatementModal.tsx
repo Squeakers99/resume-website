@@ -18,9 +18,6 @@ type Props = {
 const money = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
-// Owner's card-total rule (mirrors backend computedCardTotalCents): charges
-// minus credits, ignoring only the one TRSF credit that equals the printed
-// previous balance (the settlement payment).
 // Sum of ALL TRSF credits, settlement included — the owner's rule for the
 // printed "Payments and credits" figure.
 const trsfSum = (entries: BudgetEntry[]): number =>
@@ -28,6 +25,9 @@ const trsfSum = (entries: BudgetEntry[]): number =>
     .filter((e) => e.isCredit && /TRSF/i.test(e.description))
     .reduce((sum, e) => sum + Math.round(e.amount * 100), 0) / 100;
 
+// Owner's card-total rule (mirrors backend computedCardTotalCents): charges
+// minus extra TRSF credits; the settlement TRSF (equal to the printed
+// previous balance) and all non-TRSF credits are ignored.
 const cardTotalFromEntries = (
   entries: BudgetEntry[],
   previousBalance: number
@@ -37,7 +37,8 @@ const cardTotalFromEntries = (
   const cents = entries.reduce((sum, e) => {
     const c = Math.round(e.amount * 100);
     if (!e.isCredit) return sum + c;
-    if (!settlementIgnored && /TRSF/i.test(e.description) && c === prevCents) {
+    if (!/TRSF/i.test(e.description)) return sum; // non-TRSF credits ignored
+    if (!settlementIgnored && c === prevCents) {
       settlementIgnored = true;
       return sum;
     }
@@ -222,8 +223,9 @@ export default function ReviewStatementModal({ statement, onClose }: Props) {
               <p className={styles.mutedText}>
                 Computed total:{" "}
                 {money(cardTotalFromEntries(entries, current.previousBalance))} (charges −
-                credits; the {money(current.previousBalance)} settlement TRSF ignored) ·
-                TRSF sum: {money(trsfSum(entries))} (should equal payments and credits)
+                extra TRSFs; non-TRSF credits and the {money(current.previousBalance)}{" "}
+                settlement TRSF ignored) · TRSF sum: {money(trsfSum(entries))} (should
+                equal payments and credits)
               </p>
             )}
           </div>

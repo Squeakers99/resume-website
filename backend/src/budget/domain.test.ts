@@ -176,15 +176,17 @@ describe("validateStatement", () => {
     expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
   });
 
-  it("flags payments and credits that don't match the TRSF sum", () => {
+  it("ignores non-TRSF credits in the total and flags the TRSF-sum check", () => {
     const s = baseStatement();
-    // A non-TRSF credit still subtracts from the total, but no longer counts
-    // toward the TRSF sum, so the printed payments-and-credits stops matching.
+    // A non-TRSF credit is ignored by the total rule entirely and no longer
+    // counts toward the TRSF sum.
     s.entries[1].description = "PAYMENT RECEIVED - THANK YOU";
+    s.totalBalance = 973.05; // charges only — the 99.99 credit is ignored
     const result = validateStatement(s);
-    expect(result.status).toBe("mismatch");
-    expect(result.problems.some((p) => p.includes("payments and credits"))).toBe(true);
+    expect(computedCardTotalCents(s.entries, toCents(s.previousBalance))).toBe(97305);
     expect(result.problems.some((p) => p.includes("computed total"))).toBe(false);
+    expect(result.problems.some((p) => p.includes("payments and credits"))).toBe(true);
+    expect(result.status).toBe("mismatch");
   });
 
   it("computes the card total with the settlement TRSF ignored", () => {
