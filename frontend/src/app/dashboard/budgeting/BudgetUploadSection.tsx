@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { BudgetStatement, BudgetUploadResult } from "@/lib/server-api";
 import { deleteStatementAction, uploadStatementAction } from "./actions";
 import { formatDay } from "./formatDate";
@@ -12,13 +12,29 @@ type Props = {
   backendConnected: boolean;
 };
 
+const MAX_VISIBLE_STATEMENTS = 5;
+
 export default function BudgetUploadSection({ statements, backendConnected }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<BudgetUploadResult | null>(null);
   const [reviewing, setReviewing] = useState<BudgetStatement | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const shown = statements.slice(0, MAX_VISIBLE_STATEMENTS);
+  const overflow = statements.length - shown.length;
+
+  useEffect(() => {
+    if (!showAll) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      // The review modal stacks on top and owns Escape while it is open.
+      if (e.key === "Escape" && !reviewing) setShowAll(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showAll, reviewing]);
 
   const submit = (file: File) => {
     setError(null);
@@ -41,6 +57,37 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
       if (!res.ok) setError(res.error ?? "Delete failed");
     });
   };
+
+  const statementItem = (s: BudgetStatement) => (
+    <li key={s.id} className={styles.statementItem}>
+      <span>
+        {formatDay(s.statementDate)} · {s.source} · {s.entryCount ?? "?"} entries
+        {s.origin === "csv" && " · CSV"}
+        {s.validationStatus === "mismatch" && (
+          <strong className={styles.errorText}> · mismatch</strong>
+        )}
+      </span>
+      <span className={styles.statementActions}>
+        <button
+          type="button"
+          className={styles.btn}
+          onClick={() => setReviewing(s)}
+          aria-label={`Review ${s.source} ${formatDay(s.statementDate)} statement`}
+        >
+          Review
+        </button>
+        <button
+          type="button"
+          className={styles.btnDanger}
+          disabled={isPending}
+          onClick={() => onDelete(s.id)}
+          aria-label={`Delete ${s.source} ${formatDay(s.statementDate)} statement`}
+        >
+          Delete
+        </button>
+      </span>
+    </li>
+  );
 
   return (
     <section className={styles.card} aria-label="Upload statement">
@@ -127,38 +174,51 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
       {statements.length === 0 ? (
         <p className={styles.mutedText}>None yet.</p>
       ) : (
-        <ul className={styles.statementList}>
-          {statements.map((s) => (
-            <li key={s.id} className={styles.statementItem}>
-              <span>
-                {formatDay(s.statementDate)} · {s.source} · {s.entryCount ?? "?"} entries
-                {s.origin === "csv" && " · CSV"}
-                {s.validationStatus === "mismatch" && (
-                  <strong className={styles.errorText}> · mismatch</strong>
-                )}
-              </span>
-              <span className={styles.statementActions}>
-                <button
-                  type="button"
-                  className={styles.btn}
-                  onClick={() => setReviewing(s)}
-                  aria-label={`Review ${s.source} ${formatDay(s.statementDate)} statement`}
-                >
-                  Review
-                </button>
-                <button
-                  type="button"
-                  className={styles.btnDanger}
-                  disabled={isPending}
-                  onClick={() => onDelete(s.id)}
-                  aria-label={`Delete ${s.source} ${formatDay(s.statementDate)} statement`}
-                >
-                  Delete
-                </button>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className={styles.statementList}>{shown.map(statementItem)}</ul>
+          {overflow > 0 && (
+            <div className={styles.statementListFooter}>
+              <span className={styles.mutedText}>+{overflow} more</span>
+              <button
+                type="button"
+                className={styles.btn}
+                onClick={() => setShowAll(true)}
+              >
+                View all ({statements.length})
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {showAll && (
+        <div
+          className={styles.modalOverlay}
+          role="presentation"
+          onClick={() => setShowAll(false)}
+        >
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="All statements"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <h2 className={styles.cardHeading}>
+                All statements ({statements.length})
+              </h2>
+              <button
+                type="button"
+                className={styles.btn}
+                onClick={() => setShowAll(false)}
+              >
+                Close
+              </button>
+            </div>
+            <ul className={styles.statementList}>{statements.map(statementItem)}</ul>
+          </div>
+        </div>
       )}
 
       {reviewing && (
