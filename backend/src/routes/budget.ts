@@ -4,7 +4,14 @@ import type { RequestHandler } from "express";
 import multer from "multer";
 import pdfParse from "pdf-parse";
 import { prisma } from "../db/prisma";
-import { BUDGET_CATEGORIES, toCents, validateStatement } from "../budget/domain";
+import {
+  BUDGET_CATEGORIES,
+  toCents,
+  validateStatement,
+  type BudgetAccountType,
+  type BudgetCategory,
+  type ExtractedStatement,
+} from "../budget/domain";
 import { ExtractionError, extractStatementsFromText } from "../budget/extract";
 import { deleteStatementPdf, putStatementPdf } from "../lib/s3";
 
@@ -165,6 +172,54 @@ const toEntry = (row: EntryRow) => ({
   isCredit: row.is_credit,
   category: row.category,
 });
+
+// Rebuild a statement + its entries from the DB and re-run the printed-totals
+// validation — used after manual edits so the mismatch flag stays truthful.
+async function revalidateStatement(
+  statementId: string
+): Promise<{ statement: StatementRow; problems: string[] } | null> {
+  const stmtRows = await prisma.$queryRaw<StatementRow[]>`
+    SELECT * FROM budget_statements WHERE id = ${statementId}
+  `;
+  if (stmtRows.length === 0) return null;
+  const s = stmtRows[0];
+
+  const entryRows = await prisma.$queryRaw<EntryRow[]>`
+    SELECT id, statement_id, trans_date, posting_date, description,
+           amount_cents, is_credit, category
+    FROM budget_entries WHERE statement_id = ${statementId}
+  `;
+
+  const extracted: ExtractedStatement = {
+    source: s.source,
+    accountType: s.account_type as BudgetAccountType,
+    statementDate: isoDay(s.statement_date),
+    periodStart: isoDay(s.period_start),
+    periodEnd: isoDay(s.period_end),
+    previousBalance: s.previous_balance_cents / 100,
+    paymentsCredits: s.payments_credits_cents / 100,
+    purchasesTotal: s.purchases_total_cents / 100,
+    totalBalance: s.total_balance_cents / 100,
+    entries: entryRows.map((e) => ({
+      transDate: isoDay(e.trans_date),
+      postingDate: isoDay(e.posting_date),
+      description: e.description,
+      amount: e.amount_cents / 100,
+      isCredit: e.is_credit,
+      category: e.category as BudgetCategory,
+    })),
+  };
+  const validation = validateStatement(extracted);
+
+  const updated = await prisma.$queryRaw<StatementRow[]>`
+    UPDATE budget_statements
+    SET validation_status = ${validation.status},
+        extracted_purchases_sum_cents = ${validation.extractedPurchasesSumCents}
+    WHERE id = ${statementId}
+    RETURNING *
+  `;
+  return { statement: updated[0], problems: validation.problems };
+}
 
 // ----- Upload -----
 
@@ -353,23 +408,132 @@ router.get("/entries", async (req, res) => {
   }
 });
 
+// All entries of one statement, including hidden Card Payment rows — the
+// review modal needs the complete picture to reconcile a mismatch.
+router.get("/statements/:id/entries", async (req, res) => {
+  try {
+    await ensureBudgetTables();
+    const rows = await prisma.$queryRaw<EntryRow[]>`
+      SELECT id, statement_id, trans_date, posting_date, description,
+             amount_cents, is_credit, category
+      FROM budget_entries
+      WHERE statement_id = ${req.params.id}
+      ORDER BY trans_date ASC, posting_date ASC
+    `;
+    res.json(rows.map(toEntry));
+  } catch (error) {
+    console.error("Failed to list statement entries", error);
+    res.status(500).json({ error: "Failed to list statement entries" });
+  }
+});
+
 // ----- Mutations -----
+
+const isIsoDay = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const isFiniteNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+router.patch("/statements/:id", async (req, res) => {
+  try {
+    await ensureBudgetTables();
+    const b = (req.body ?? {}) as Record<string, unknown>;
+
+    if (b.source !== undefined && (typeof b.source !== "string" || !b.source.trim())) {
+      return res.status(400).json({ error: "source must be a non-empty string" });
+    }
+    for (const f of ["statementDate", "periodStart", "periodEnd"]) {
+      if (b[f] !== undefined && !isIsoDay(b[f])) {
+        return res.status(400).json({ error: `${f} must be a yyyy-mm-dd date` });
+      }
+    }
+    for (const f of ["previousBalance", "totalBalance"]) {
+      if (b[f] !== undefined && !isFiniteNum(b[f])) {
+        return res.status(400).json({ error: `${f} must be a number` });
+      }
+    }
+    for (const f of ["paymentsCredits", "purchasesTotal"]) {
+      if (b[f] !== undefined && (!isFiniteNum(b[f]) || (b[f] as number) < 0)) {
+        return res.status(400).json({ error: `${f} must be a non-negative number` });
+      }
+    }
+
+    const cents = (v: unknown) => (v !== undefined ? toCents(v as number) : null);
+    const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+      UPDATE budget_statements SET
+        source = COALESCE(${(b.source as string | undefined)?.trim() ?? null}, source),
+        statement_date = COALESCE(${(b.statementDate as string | undefined) ?? null}::date, statement_date),
+        period_start = COALESCE(${(b.periodStart as string | undefined) ?? null}::date, period_start),
+        period_end = COALESCE(${(b.periodEnd as string | undefined) ?? null}::date, period_end),
+        previous_balance_cents = COALESCE(${cents(b.previousBalance)}, previous_balance_cents),
+        payments_credits_cents = COALESCE(${cents(b.paymentsCredits)}, payments_credits_cents),
+        purchases_total_cents = COALESCE(${cents(b.purchasesTotal)}, purchases_total_cents),
+        total_balance_cents = COALESCE(${cents(b.totalBalance)}, total_balance_cents)
+      WHERE id = ${req.params.id}
+      RETURNING id
+    `;
+    if (rows.length === 0) return res.status(404).json({ error: "statement not found" });
+
+    const result = await revalidateStatement(req.params.id);
+    if (!result) return res.status(404).json({ error: "statement not found" });
+    res.json({ statement: toStatement(result.statement), problems: result.problems });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "";
+    if (detail.includes("23505")) {
+      return res
+        .status(409)
+        .json({ error: "Another statement already exists for that source and date" });
+    }
+    console.error("Failed to update statement", error);
+    res.status(500).json({ error: "Failed to update statement" });
+  }
+});
 
 router.patch("/entries/:id", async (req, res) => {
   try {
     await ensureBudgetTables();
-    const { category } = req.body ?? {};
-    if (!(BUDGET_CATEGORIES as readonly string[]).includes(category)) {
+    const b = (req.body ?? {}) as Record<string, unknown>;
+
+    if (
+      b.category !== undefined &&
+      !(BUDGET_CATEGORIES as readonly string[]).includes(b.category as string)
+    ) {
       return res.status(400).json({ error: "invalid category" });
     }
+    if (b.description !== undefined && (typeof b.description !== "string" || !b.description.trim())) {
+      return res.status(400).json({ error: "description must be a non-empty string" });
+    }
+    for (const f of ["transDate", "postingDate"]) {
+      if (b[f] !== undefined && !isIsoDay(b[f])) {
+        return res.status(400).json({ error: `${f} must be a yyyy-mm-dd date` });
+      }
+    }
+    if (b.amount !== undefined && (!isFiniteNum(b.amount) || (b.amount as number) < 0)) {
+      return res.status(400).json({ error: "amount must be a non-negative number" });
+    }
+    if (b.isCredit !== undefined && typeof b.isCredit !== "boolean") {
+      return res.status(400).json({ error: "isCredit must be a boolean" });
+    }
+
     const rows = await prisma.$queryRaw<EntryRow[]>`
-      UPDATE budget_entries SET category = ${category}
+      UPDATE budget_entries SET
+        category = COALESCE(${(b.category as string | undefined) ?? null}, category),
+        description = COALESCE(${(b.description as string | undefined)?.trim() ?? null}, description),
+        trans_date = COALESCE(${(b.transDate as string | undefined) ?? null}::date, trans_date),
+        posting_date = COALESCE(${(b.postingDate as string | undefined) ?? null}::date, posting_date),
+        amount_cents = COALESCE(${b.amount !== undefined ? toCents(b.amount as number) : null}, amount_cents),
+        is_credit = COALESCE(${(b.isCredit as boolean | undefined) ?? null}, is_credit)
       WHERE id = ${req.params.id}
       RETURNING id, statement_id, trans_date, posting_date, description,
                 amount_cents, is_credit, category
     `;
     if (rows.length === 0) return res.status(404).json({ error: "entry not found" });
-    res.json(toEntry(rows[0]));
+
+    // Amount/credit-flag edits change the reconciliation — refresh the flag.
+    const result = await revalidateStatement(rows[0].statement_id);
+    res.json({
+      entry: toEntry(rows[0]),
+      statement: result ? toStatement(result.statement) : null,
+      problems: result?.problems ?? [],
+    });
   } catch (error) {
     console.error("Failed to update entry", error);
     res.status(500).json({ error: "Failed to update entry" });

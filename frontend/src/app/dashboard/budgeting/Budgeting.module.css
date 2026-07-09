@@ -241,6 +241,62 @@
   color: #d64545;
 }
 
+.validText {
+  margin: 0;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--status-online, #2f9e44);
+}
+
+.statementActions {
+  display: flex;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+/* ----- Review modal ----- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: min(920px, 100%);
+  max-height: min(85vh, 900px);
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.descInput {
+  width: 100%;
+  min-width: 220px;
+}
+
+.amountInput {
+  width: 110px;
+  text-align: right;
+}
+
 /* ----- Transactions filter panel ----- */
 .filterPanel {
   display: flex;

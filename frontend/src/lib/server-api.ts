@@ -175,14 +175,64 @@ export async function listBudgetEntries(filters?: {
   return res.json();
 }
 
-export async function patchBudgetEntryCategory(
+export type BudgetStatementPatch = {
+  source?: string;
+  statementDate?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  previousBalance?: number;
+  paymentsCredits?: number;
+  purchasesTotal?: number;
+  totalBalance?: number;
+};
+
+export type BudgetEntryPatch = {
+  category?: string;
+  description?: string;
+  transDate?: string;
+  postingDate?: string;
+  amount?: number;
+  isCredit?: boolean;
+};
+
+export type BudgetEntryPatchResult = {
+  entry: BudgetEntry;
+  statement: BudgetStatement | null;
+  problems: string[];
+};
+
+export type BudgetStatementPatchResult = {
+  statement: BudgetStatement;
+  problems: string[];
+};
+
+export async function patchBudgetEntry(
   id: string,
-  category: string
-): Promise<BudgetEntry> {
+  patch: BudgetEntryPatch
+): Promise<BudgetEntryPatchResult> {
   const res = await dashboardFetch(`/budget/entries/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    body: JSON.stringify({ category }),
+    body: JSON.stringify(patch),
   });
+  return res.json();
+}
+
+export async function patchBudgetStatement(
+  id: string,
+  patch: BudgetStatementPatch
+): Promise<BudgetStatementPatchResult> {
+  const res = await dashboardFetch(`/budget/statements/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return res.json();
+}
+
+// Every entry of one statement, including hidden Card Payment rows.
+export async function listStatementEntries(id: string): Promise<BudgetEntry[]> {
+  const res = await dashboardFetch(
+    `/budget/statements/${encodeURIComponent(id)}/entries`
+  );
   return res.json();
 }
 

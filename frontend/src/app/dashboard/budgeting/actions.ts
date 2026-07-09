@@ -4,8 +4,14 @@ import { revalidatePath } from "next/cache";
 import { getOwnerSession } from "@/lib/auth";
 import {
   deleteBudgetStatement,
-  patchBudgetEntryCategory,
+  listStatementEntries,
+  patchBudgetEntry,
+  patchBudgetStatement,
   uploadBudgetStatement,
+  type BudgetEntry,
+  type BudgetEntryPatch,
+  type BudgetStatement,
+  type BudgetStatementPatch,
   type BudgetUploadResult,
 } from "@/lib/server-api";
 
@@ -54,15 +60,65 @@ export async function uploadStatementAction(
   }
 }
 
+export type ReviewActionResult = ActionResult & {
+  statement?: BudgetStatement | null;
+  entry?: BudgetEntry;
+  problems?: string[];
+};
+
 export async function recategorizeEntryAction(
   id: string,
   category: string
 ): Promise<ActionResult> {
   try {
     await assertOwner();
-    await patchBudgetEntryCategory(id, category);
+    await patchBudgetEntry(id, { category });
     revalidatePath("/dashboard/budgeting");
     return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function updateEntryAction(
+  id: string,
+  patch: BudgetEntryPatch
+): Promise<ReviewActionResult> {
+  try {
+    await assertOwner();
+    const result = await patchBudgetEntry(id, patch);
+    revalidatePath("/dashboard/budgeting");
+    return {
+      ok: true,
+      statement: result.statement,
+      entry: result.entry,
+      problems: result.problems,
+    };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function updateStatementAction(
+  id: string,
+  patch: BudgetStatementPatch
+): Promise<ReviewActionResult> {
+  try {
+    await assertOwner();
+    const result = await patchBudgetStatement(id, patch);
+    revalidatePath("/dashboard/budgeting");
+    return { ok: true, statement: result.statement, problems: result.problems };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function getStatementEntriesAction(
+  id: string
+): Promise<ActionResult & { entries?: BudgetEntry[] }> {
+  try {
+    await assertOwner();
+    return { ok: true, entries: await listStatementEntries(id) };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }

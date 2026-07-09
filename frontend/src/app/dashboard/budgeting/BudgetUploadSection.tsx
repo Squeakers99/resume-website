@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import type { BudgetStatement, BudgetUploadResult } from "@/lib/server-api";
 import { deleteStatementAction, uploadStatementAction } from "./actions";
 import { formatDay } from "./formatDate";
+import ReviewStatementModal from "./ReviewStatementModal";
 import styles from "./Budgeting.module.css";
 
 type Props = {
@@ -16,6 +17,7 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<BudgetUploadResult | null>(null);
+  const [reviewing, setReviewing] = useState<BudgetStatement | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const submit = (file: File) => {
@@ -130,18 +132,35 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
                   <strong className={styles.errorText}> · mismatch</strong>
                 )}
               </span>
-              <button
-                type="button"
-                className={styles.btnDanger}
-                disabled={isPending}
-                onClick={() => onDelete(s.id)}
-                aria-label={`Delete ${s.source} ${formatDay(s.statementDate)} statement`}
-              >
-                Delete
-              </button>
+              <span className={styles.statementActions}>
+                <button
+                  type="button"
+                  className={styles.btn}
+                  onClick={() => setReviewing(s)}
+                  aria-label={`Review ${s.source} ${formatDay(s.statementDate)} statement`}
+                >
+                  Review
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnDanger}
+                  disabled={isPending}
+                  onClick={() => onDelete(s.id)}
+                  aria-label={`Delete ${s.source} ${formatDay(s.statementDate)} statement`}
+                >
+                  Delete
+                </button>
+              </span>
             </li>
           ))}
         </ul>
+      )}
+
+      {reviewing && (
+        <ReviewStatementModal
+          statement={reviewing}
+          onClose={() => setReviewing(null)}
+        />
       )}
     </section>
   );
