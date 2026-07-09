@@ -207,6 +207,9 @@ export default function BudgetChartsSection({
   // "Expand" modal: which time chart is showing full-size.
   const [expanded, setExpanded] = useState<"bar" | "line" | null>(null);
 
+  // Hovered month on the stacked bar: that whole bar stays at full strength.
+  const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
+
   useEffect(() => {
     if (!expanded) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -332,6 +335,7 @@ export default function BudgetChartsSection({
         tickFormatter={dollars}
       />
       <Tooltip
+        cursor={false}
         formatter={(value) => money(Number(value))}
         labelFormatter={(label) => formatMonth(String(label))}
         contentStyle={tooltipContentStyle}
@@ -347,7 +351,21 @@ export default function BudgetChartsSection({
           stroke="var(--card)"
           strokeWidth={2}
           maxBarSize={24}
-        />
+          isAnimationActive={false}
+          onMouseEnter={(_, index) =>
+            setHoveredMonth(String(barData[index]?.month ?? ""))
+          }
+          onMouseLeave={() => setHoveredMonth(null)}
+        >
+          {barData.map((row) => (
+            <Cell
+              key={String(row.month)}
+              fillOpacity={
+                hoveredMonth && String(row.month) !== hoveredMonth ? 0.3 : 1
+              }
+            />
+          ))}
+        </Bar>
       ))}
     </BarChart>
   );
