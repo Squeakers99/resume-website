@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BUDGET_CATEGORIES,
+  computedCardTotalCents,
   toCents,
   validateStatement,
   type ExtractedStatement,
@@ -84,12 +85,12 @@ describe("validateStatement", () => {
     expect(validateStatement(s).status).toBe("valid");
   });
 
-  it("flags a purchases-sum mismatch", () => {
+  it("flags a card whose charges-minus-credits total is off", () => {
     const s = baseStatement();
     s.entries[3].amount = 50.0;
     const result = validateStatement(s);
     expect(result.status).toBe("mismatch");
-    expect(result.problems.some((p) => p.includes("purchases"))).toBe(true);
+    expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
   });
 
   it("flags broken balance math (prev - payments + purchases != total)", () => {
@@ -135,11 +136,21 @@ describe("validateStatement", () => {
     expect(validateStatement({ ...s, accountType: "credit_card" }).status).toBe("mismatch");
   });
 
-  it("flags a credits-sum mismatch (mis-read payment amount)", () => {
+  it("ignores TRSF credits in the card total (owner rule)", () => {
     const s = baseStatement();
-    s.entries[0].amount = 0.96; // TRSF read as 0.96 instead of 480.96
+    s.entries[0].amount = 0.96; // TRSF amount is irrelevant to the card total
+    expect(validateStatement(s).status).toBe("valid");
+  });
+
+  it("flags a mis-read non-TRSF credit on a card", () => {
+    const s = baseStatement();
+    s.entries[1].amount = 9.99; // PAYMENT RECEIVED read as 9.99 instead of 99.99
     const result = validateStatement(s);
     expect(result.status).toBe("mismatch");
-    expect(result.problems.some((p) => p.includes("credits"))).toBe(true);
+    expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
+  });
+
+  it("computes the card total as charges minus non-TRSF credits", () => {
+    expect(computedCardTotalCents(baseStatement().entries)).toBe(87306);
   });
 });

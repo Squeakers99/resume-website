@@ -59,12 +59,42 @@ export const toCents = (dollars: number): number => Math.round(dollars * 100);
 
 const TOLERANCE_CENTS = 1;
 
+// Owner's card-total rule: total balance = all charges minus all credits,
+// ignoring TRSF credits (those transfers just settle the previous cycle).
+export function computedCardTotalCents(
+  entries: Array<Pick<ExtractedEntry, "amount" | "isCredit" | "description">>
+): number {
+  const chargesCents = entries
+    .filter((e) => !e.isCredit)
+    .reduce((sum, e) => sum + toCents(e.amount), 0);
+  const creditsCents = entries
+    .filter((e) => e.isCredit && !/TRSF/i.test(e.description))
+    .reduce((sum, e) => sum + toCents(e.amount), 0);
+  return chargesCents - creditsCents;
+}
+
 export function validateStatement(s: ExtractedStatement): ValidationResult {
   const problems: string[] = [];
 
   const purchasesSumCents = s.entries
     .filter((e) => !e.isCredit)
     .reduce((sum, e) => sum + toCents(e.amount), 0);
+
+  // Credit cards validate against the owner's total rule only — the other
+  // printed summary numbers don't matter for cards.
+  if (s.accountType === "credit_card") {
+    const computedCents = computedCardTotalCents(s.entries);
+    if (Math.abs(computedCents - toCents(s.totalBalance)) > TOLERANCE_CENTS) {
+      problems.push(
+        `computed total ${(computedCents / 100).toFixed(2)} (charges minus credits, TRSF ignored) does not match total balance ${s.totalBalance.toFixed(2)}`
+      );
+    }
+    return {
+      status: problems.length === 0 ? "valid" : "mismatch",
+      extractedPurchasesSumCents: purchasesSumCents,
+      problems,
+    };
+  }
 
   const printedPurchasesCents = toCents(s.purchasesTotal);
   if (Math.abs(purchasesSumCents - printedPurchasesCents) > TOLERANCE_CENTS) {
@@ -84,13 +114,9 @@ export function validateStatement(s: ExtractedStatement): ValidationResult {
     );
   }
 
-  // Card balances are debt (money out increases them); bank balances are
-  // assets (money in increases them).
-  const printedInCents = toCents(s.paymentsCredits);
+  // Bank balances are assets: opening + money in − money out = closing.
   const computedBalanceCents =
-    s.accountType === "credit_card"
-      ? toCents(s.previousBalance) - printedInCents + printedPurchasesCents
-      : toCents(s.previousBalance) + printedInCents - printedPurchasesCents;
+    toCents(s.previousBalance) + toCents(s.paymentsCredits) - printedPurchasesCents;
   if (Math.abs(computedBalanceCents - toCents(s.totalBalance)) > TOLERANCE_CENTS) {
     problems.push(
       `balance math is off for ${s.accountType}: opening ${s.previousBalance.toFixed(2)}, in ${s.paymentsCredits.toFixed(2)}, out ${s.purchasesTotal.toFixed(2)} != closing ${s.totalBalance.toFixed(2)}`

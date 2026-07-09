@@ -15,6 +15,21 @@ type Props = {
   onClose: () => void;
 };
 
+const money = (n: number) =>
+  n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
+
+// Owner's card-total rule (mirrors backend computedCardTotalCents):
+// charges minus credits, ignoring TRSF credits.
+const cardTotalFromEntries = (entries: BudgetEntry[]): number => {
+  const cents = entries.reduce((sum, e) => {
+    const c = Math.round(e.amount * 100);
+    if (!e.isCredit) return sum + c;
+    if (/TRSF/i.test(e.description)) return sum;
+    return sum - c;
+  }, 0);
+  return cents / 100;
+};
+
 // Every field of one billing, editable. Each field saves on blur (only when
 // changed); the backend re-runs the printed-totals validation after every
 // save, so the mismatch flag clears the moment the numbers reconcile.
@@ -183,26 +198,38 @@ export default function ReviewStatementModal({ statement, onClose }: Props) {
           <p className={styles.validText}>All totals reconcile.</p>
         )}
 
-        <div className={styles.filterPanel}>
-          <label className={styles.filterField}>
-            <span className={styles.filterLabel}>Source</span>
-            <input
-              type="text"
-              className={styles.select}
-              defaultValue={current.source}
-              onBlur={(e) => {
-                if (e.target.value.trim()) saveStatementField("source", e.target.value.trim());
-              }}
-            />
-          </label>
-          {dateField("Statement date", "statementDate")}
-          {dateField("Period start", "periodStart")}
-          {dateField("Period end", "periodEnd")}
-          {moneyField("Opening balance", "previousBalance")}
-          {moneyField("Money in", "paymentsCredits")}
-          {moneyField("Money out", "purchasesTotal")}
-          {moneyField("Closing balance", "totalBalance")}
-        </div>
+        {current.accountType === "credit_card" ? (
+          <div className={styles.filterPanel}>
+            {moneyField("Total balance", "totalBalance")}
+            {entries !== null && (
+              <p className={styles.mutedText}>
+                Computed from entries: {money(cardTotalFromEntries(entries))} (charges −
+                credits, TRSF ignored)
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className={styles.filterPanel}>
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>Source</span>
+              <input
+                type="text"
+                className={styles.select}
+                defaultValue={current.source}
+                onBlur={(e) => {
+                  if (e.target.value.trim()) saveStatementField("source", e.target.value.trim());
+                }}
+              />
+            </label>
+            {dateField("Statement date", "statementDate")}
+            {dateField("Period start", "periodStart")}
+            {dateField("Period end", "periodEnd")}
+            {moneyField("Opening balance", "previousBalance")}
+            {moneyField("Money in", "paymentsCredits")}
+            {moneyField("Money out", "purchasesTotal")}
+            {moneyField("Closing balance", "totalBalance")}
+          </div>
+        )}
 
         <h3 className={styles.cardSubheading}>Entries (including card payments)</h3>
         {entries === null ? (
