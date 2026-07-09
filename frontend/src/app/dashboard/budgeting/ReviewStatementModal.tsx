@@ -18,13 +18,22 @@ type Props = {
 const money = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
-// Owner's card-total rule (mirrors backend computedCardTotalCents):
-// charges minus credits, ignoring TRSF credits.
-const cardTotalFromEntries = (entries: BudgetEntry[]): number => {
+// Owner's card-total rule (mirrors backend computedCardTotalCents): charges
+// minus credits, ignoring only the one TRSF credit that equals the printed
+// previous balance (the settlement payment).
+const cardTotalFromEntries = (
+  entries: BudgetEntry[],
+  previousBalance: number
+): number => {
+  const prevCents = Math.round(previousBalance * 100);
+  let settlementIgnored = false;
   const cents = entries.reduce((sum, e) => {
     const c = Math.round(e.amount * 100);
     if (!e.isCredit) return sum + c;
-    if (/TRSF/i.test(e.description)) return sum;
+    if (!settlementIgnored && /TRSF/i.test(e.description) && c === prevCents) {
+      settlementIgnored = true;
+      return sum;
+    }
     return sum - c;
   }, 0);
   return cents / 100;
@@ -203,8 +212,9 @@ export default function ReviewStatementModal({ statement, onClose }: Props) {
             {moneyField("Total balance", "totalBalance")}
             {entries !== null && (
               <p className={styles.mutedText}>
-                Computed from entries: {money(cardTotalFromEntries(entries))} (charges −
-                credits, TRSF ignored)
+                Computed from entries:{" "}
+                {money(cardTotalFromEntries(entries, current.previousBalance))} (charges −
+                credits; the {money(current.previousBalance)} settlement TRSF ignored)
               </p>
             )}
           </div>

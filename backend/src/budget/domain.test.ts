@@ -136,10 +136,34 @@ describe("validateStatement", () => {
     expect(validateStatement({ ...s, accountType: "credit_card" }).status).toBe("mismatch");
   });
 
-  it("ignores TRSF credits in the card total (owner rule)", () => {
+  it("ignores only the TRSF that settles the previous balance", () => {
+    // Base: TRSF 480.96 equals previousBalance 480.96 -> ignored; valid.
+    expect(validateStatement(baseStatement()).status).toBe("valid");
+  });
+
+  it("subtracts extra TRSF credits that do not match the previous balance", () => {
     const s = baseStatement();
-    s.entries[0].amount = 0.96; // TRSF amount is irrelevant to the card total
+    s.entries.push({
+      transDate: "2026-06-20",
+      postingDate: "2026-06-20",
+      description: "TRSF FROM/DE ACCT/CPT 3776-XXXX-387",
+      amount: 50.0,
+      isCredit: true,
+      category: "Card Payment",
+    });
+    // 973.05 - (99.99 + 50.00) = 823.06
+    expect(computedCardTotalCents(s.entries, toCents(s.previousBalance))).toBe(82306);
+    expect(validateStatement(s).status).toBe("mismatch");
+    s.totalBalance = 823.06;
     expect(validateStatement(s).status).toBe("valid");
+  });
+
+  it("flags a mis-read settlement TRSF (no longer matches previous balance)", () => {
+    const s = baseStatement();
+    s.entries[0].amount = 0.96; // TRSF read as 0.96 instead of 480.96
+    const result = validateStatement(s);
+    expect(result.status).toBe("mismatch");
+    expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
   });
 
   it("flags a mis-read non-TRSF credit on a card", () => {
@@ -150,7 +174,8 @@ describe("validateStatement", () => {
     expect(result.problems.some((p) => p.includes("computed total"))).toBe(true);
   });
 
-  it("computes the card total as charges minus non-TRSF credits", () => {
-    expect(computedCardTotalCents(baseStatement().entries)).toBe(87306);
+  it("computes the card total with the settlement TRSF ignored", () => {
+    const s = baseStatement();
+    expect(computedCardTotalCents(s.entries, toCents(s.previousBalance))).toBe(87306);
   });
 });

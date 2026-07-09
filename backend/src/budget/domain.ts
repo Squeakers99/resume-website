@@ -60,16 +60,31 @@ export const toCents = (dollars: number): number => Math.round(dollars * 100);
 const TOLERANCE_CENTS = 1;
 
 // Owner's card-total rule: total balance = all charges minus all credits,
-// ignoring TRSF credits (those transfers just settle the previous cycle).
+// ignoring only THE TRSF credit that settles the previous cycle — the one
+// whose amount equals the statement's printed "Previous total balance".
+// Any other TRSF credit subtracts like a normal payment.
 export function computedCardTotalCents(
-  entries: Array<Pick<ExtractedEntry, "amount" | "isCredit" | "description">>
+  entries: Array<Pick<ExtractedEntry, "amount" | "isCredit" | "description">>,
+  previousBalanceCents: number
 ): number {
   const chargesCents = entries
     .filter((e) => !e.isCredit)
     .reduce((sum, e) => sum + toCents(e.amount), 0);
-  const creditsCents = entries
-    .filter((e) => e.isCredit && !/TRSF/i.test(e.description))
-    .reduce((sum, e) => sum + toCents(e.amount), 0);
+
+  let settlementIgnored = false;
+  let creditsCents = 0;
+  for (const e of entries.filter((e) => e.isCredit)) {
+    const cents = toCents(e.amount);
+    if (
+      !settlementIgnored &&
+      /TRSF/i.test(e.description) &&
+      cents === previousBalanceCents
+    ) {
+      settlementIgnored = true;
+      continue;
+    }
+    creditsCents += cents;
+  }
   return chargesCents - creditsCents;
 }
 
@@ -83,7 +98,7 @@ export function validateStatement(s: ExtractedStatement): ValidationResult {
   // Credit cards validate against the owner's total rule only — the other
   // printed summary numbers don't matter for cards.
   if (s.accountType === "credit_card") {
-    const computedCents = computedCardTotalCents(s.entries);
+    const computedCents = computedCardTotalCents(s.entries, toCents(s.previousBalance));
     if (Math.abs(computedCents - toCents(s.totalBalance)) > TOLERANCE_CENTS) {
       problems.push(
         `computed total ${(computedCents / 100).toFixed(2)} (charges minus credits, TRSF ignored) does not match total balance ${s.totalBalance.toFixed(2)}`
