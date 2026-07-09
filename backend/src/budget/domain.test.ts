@@ -68,7 +68,8 @@ describe("BUDGET_CATEGORIES", () => {
     expect(BUDGET_CATEGORIES).toContain("Income");
     expect(BUDGET_CATEGORIES).toContain("Card Payment");
     expect(BUDGET_CATEGORIES).toContain("Other");
-    expect(BUDGET_CATEGORIES).toHaveLength(14);
+    expect(BUDGET_CATEGORIES).toContain("E-Transfer Sent");
+    expect(BUDGET_CATEGORIES).toHaveLength(15);
   });
 });
 

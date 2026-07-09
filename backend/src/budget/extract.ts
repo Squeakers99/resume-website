@@ -47,9 +47,10 @@ Rules:
     "Payment/Credit".
 - Bank-side money-out lines that pay the owner's own credit card (a "TRSF" to a
   card, or an Online Transfer whose reference contains a 16-digit card number)
-  are "Card Payment" — the spending is tracked on the card side. Other money-out
-  entries get the best-fitting category from the provided list ("Other" when
-  nothing fits).
+  are "Card Payment" — the spending is tracked on the card side. Outgoing
+  Interac e-Transfers to people ("INTERAC e-Transfer Sent" / "ETRNSFR SENT")
+  are "E-Transfer Sent". Other money-out entries get the best-fitting category
+  from the provided list ("Other" when nothing fits).
 - source identifies the account: card product + last 4 digits ("BMO Mastercard
   4423") or account product + account number suffix ("BMO Primary Chequing
   3922-387").

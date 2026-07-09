@@ -9,6 +9,7 @@ export const BUDGET_CATEGORIES = [
   "Bills & Utilities",
   "Health",
   "Travel",
+  "E-Transfer Sent",
   "Other",
   "Income",
   "Card Payment",
