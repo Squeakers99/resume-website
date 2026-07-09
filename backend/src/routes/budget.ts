@@ -659,6 +659,18 @@ router.get("/summary", async (_req, res) => {
       GROUP BY category
       ORDER BY total_cents DESC
     `;
+    // One point per card statement: the printed bill total for that month.
+    const cardBills = await prisma.$queryRaw<
+      Array<{ month: string; total_cents: number }>
+    >`
+      SELECT to_char(statement_date, 'YYYY-MM') AS month,
+             SUM(total_balance_cents)::int AS total_cents
+      FROM budget_statements
+      WHERE account_type = 'credit_card'
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `;
+
     const monthlyByCategory = await prisma.$queryRaw<
       Array<{ month: string; category: string; total_cents: number }>
     >`
@@ -679,6 +691,7 @@ router.get("/summary", async (_req, res) => {
         category: r.category,
         total: r.total_cents / 100,
       })),
+      cardBills: cardBills.map((r) => ({ month: r.month, total: r.total_cents / 100 })),
       monthlyByCategory: monthlyByCategory.map((r) => ({
         month: r.month,
         category: r.category,

@@ -32,6 +32,7 @@ export default async function BudgetingPage() {
     latestSavings: null,
     statementCount: 0,
     categoryTotals: [],
+    cardBills: [],
     monthlyByCategory: [],
   };
   let entries: BudgetEntry[] = [];
@@ -107,6 +108,7 @@ export default async function BudgetingPage() {
       <BudgetChartsSection
         categoryTotals={summary.categoryTotals}
         monthlyByCategory={summary.monthlyByCategory}
+        cardBills={summary.cardBills}
       />
 
       <div className={styles.lowerGrid}>

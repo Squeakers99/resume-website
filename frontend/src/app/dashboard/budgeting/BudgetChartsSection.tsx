@@ -7,6 +7,8 @@ import {
   CartesianGrid,
   Cell,
   Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -23,6 +25,7 @@ type MonthlyByCategory = { month: string; category: string; total: number };
 type Props = {
   categoryTotals: CategoryTotal[];
   monthlyByCategory: MonthlyByCategory[];
+  cardBills: Array<{ month: string; total: number }>;
 };
 
 const OTHER = "Other";
@@ -79,6 +82,7 @@ function buildChartGrouping(categoryTotals: CategoryTotal[]) {
 export default function BudgetChartsSection({
   categoryTotals,
   monthlyByCategory,
+  cardBills,
 }: Props) {
   const { displayOrder, fold } = useMemo(
     () => buildChartGrouping(categoryTotals),
@@ -243,6 +247,50 @@ export default function BudgetChartsSection({
           </ResponsiveContainer>
         </div>
       </div>
+
+      {cardBills.length > 0 && (
+        <div className={styles.card}>
+          <h2 className={styles.cardHeading}>Card bills by month</h2>
+          <div className={styles.chartBox}>
+            <ResponsiveContainer width="100%" height={260}>
+              {/* Single series: the title names it, so no legend (dataviz rule). */}
+              <LineChart data={cardBills}>
+                <CartesianGrid stroke="var(--card-edge)" vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  fontSize={12}
+                  tick={{ fill: "var(--text-muted)" }}
+                  axisLine={{ stroke: "var(--card-edge)" }}
+                  tickLine={{ stroke: "var(--card-edge)" }}
+                  tickFormatter={(m) => formatMonth(String(m))}
+                />
+                <YAxis
+                  fontSize={12}
+                  tick={{ fill: "var(--text-muted)" }}
+                  axisLine={{ stroke: "var(--card-edge)" }}
+                  tickLine={{ stroke: "var(--card-edge)" }}
+                  tickFormatter={(v: number) => `$${v.toLocaleString("en-CA")}`}
+                />
+                <Tooltip
+                  formatter={(value) => [money(Number(value)), "Bill total"]}
+                  labelFormatter={(label) => formatMonth(String(label))}
+                  contentStyle={tooltipContentStyle}
+                  itemStyle={tooltipItemStyle}
+                  labelStyle={tooltipLabelStyle}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  stroke="var(--series-1)"
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: "var(--series-1)", stroke: "var(--card)", strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
