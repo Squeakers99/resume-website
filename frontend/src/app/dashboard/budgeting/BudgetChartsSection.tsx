@@ -319,7 +319,14 @@ export default function BudgetChartsSection({
           data={[{ month: "", value: 0 }]}
           margin={{ ...TIME_MARGIN, right: 0 }}
         >
-          <Line dataKey="value" stroke="none" dot={false} isAnimationActive={false} />
+          <Line
+            dataKey="value"
+            stroke="none"
+            dot={false}
+            activeDot={false}
+            legendType="none"
+            isAnimationActive={false}
+          />
           <YAxis
             type="number"
             domain={[0, max]}
@@ -421,6 +428,7 @@ export default function BudgetChartsSection({
         dataKey="total"
         stroke="var(--series-1)"
         strokeWidth={2}
+        isAnimationActive={false}
         dot={{ r: 4, fill: "var(--series-1)", stroke: "var(--card)", strokeWidth: 2 }}
         activeDot={{ r: 6 }}
       />
