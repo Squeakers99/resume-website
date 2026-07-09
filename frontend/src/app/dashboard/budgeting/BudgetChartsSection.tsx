@@ -267,9 +267,13 @@ export default function BudgetChartsSection({
       )
     )
   );
-  const lineMax = niceCeil(Math.max(0, ...cardBills.map((b) => b.total)));
+  // Card bills plot on a fixed scale: $0–$1,500 (the card's limit) in $250 steps.
+  const lineMax = 1500;
+  const lineTicks = [0, 250, 500, 750, 1000, 1250, 1500];
   const ticksFor = (max: number) =>
-    [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * max * 100) / 100);
+    max === lineMax
+      ? lineTicks
+      : [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * max * 100) / 100);
 
   const TIME_MARGIN = { top: 5, right: 12, bottom: 5, left: 0 };
   const dollars = (v: number) => `$${v.toLocaleString("en-CA")}`;
