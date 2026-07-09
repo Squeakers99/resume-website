@@ -14,11 +14,18 @@ type Props = {
 
 const MAX_VISIBLE_STATEMENTS = 5;
 
+type UploadOutcome = {
+  filename: string;
+  result?: BudgetUploadResult;
+  error?: string;
+};
+
 export default function BudgetUploadSection({ statements, backendConnected }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<BudgetUploadResult | null>(null);
+  const [outcomes, setOutcomes] = useState<UploadOutcome[]>([]);
+  const [progress, setProgress] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<BudgetStatement | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -36,18 +43,32 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [showAll, reviewing]);
 
-  const submit = (file: File) => {
+  // Sequential on purpose: the transaction dedupe checks the DB at insert
+  // time, so parallel uploads of overlapping statements could race past it.
+  const submit = (files: File[]) => {
+    if (files.length === 0) return;
     setError(null);
-    setLastResult(null);
-    const fd = new FormData();
-    fd.append("file", file, file.name);
+    setOutcomes([]);
     startTransition(async () => {
-      const res = await uploadStatementAction(fd);
-      if (!res.ok || !res.result) {
-        setError(res.error ?? "Upload failed");
-        return;
+      const collected: UploadOutcome[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setProgress(
+          files.length === 1
+            ? "Parsing with AI…"
+            : `Parsing ${i + 1} of ${files.length}: ${file.name}…`
+        );
+        const fd = new FormData();
+        fd.append("file", file, file.name);
+        const res = await uploadStatementAction(fd);
+        collected.push(
+          res.ok && res.result
+            ? { filename: file.name, result: res.result }
+            : { filename: file.name, error: res.error ?? "Upload failed" }
+        );
+        setOutcomes([...collected]);
       }
-      setLastResult(res.result);
+      setProgress(null);
     });
   };
 
@@ -103,14 +124,13 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
-          const file = e.dataTransfer.files?.[0];
-          if (file) submit(file);
+          submit(Array.from(e.dataTransfer.files ?? []));
         }}
       >
         <p className={styles.dropzoneText}>
           {isPending
-            ? "Parsing with AI…"
-            : "Drop a statement PDF here, or"}
+            ? progress ?? "Parsing with AI…"
+            : "Drop statement PDFs here (several at once is fine), or"}
         </p>
         {!isPending && (
           <button
@@ -119,17 +139,17 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
             disabled={!backendConnected}
             onClick={() => inputRef.current?.click()}
           >
-            Choose PDF
+            Choose PDFs
           </button>
         )}
         <input
           ref={inputRef}
           type="file"
           accept="application/pdf"
+          multiple
           hidden
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) submit(file);
+            submit(Array.from(e.target.files ?? []));
             e.target.value = "";
           }}
         />
@@ -141,30 +161,42 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
         </p>
       )}
 
-      {lastResult && (
+      {outcomes.length > 0 && (
         <div className={styles.uploadPreview}>
-          <p className={styles.uploadPreviewTitle}>
-            {lastResult.document.filename}: {lastResult.results.length} account
-            {lastResult.results.length === 1 ? "" : "s"} parsed, PDF stored
-          </p>
-          {lastResult.results.map((r) => (
-            <div key={r.statement.id}>
-              <p className={styles.uploadPreviewTitle}>
-                {r.entries.length} transactions from {r.statement.source} (
-                {formatDay(r.statement.statementDate)})
-                {r.skippedDuplicates > 0 &&
-                  ` — ${r.skippedDuplicates} duplicate${
-                    r.skippedDuplicates === 1 ? "" : "s"
-                  } already on file, skipped`}
-                {r.statement.validationStatus === "mismatch" && (
-                  <strong> — totals mismatch, review below</strong>
-                )}
-              </p>
-              {r.problems.map((p) => (
-                <p key={p} className={styles.errorText}>
-                  {p}
+          {outcomes.map((o) => (
+            <div key={o.filename}>
+              {o.error ? (
+                <p className={styles.errorText}>
+                  {o.filename}: {o.error}
                 </p>
-              ))}
+              ) : (
+                <>
+                  <p className={styles.uploadPreviewTitle}>
+                    {o.filename}: {o.result!.results.length} account
+                    {o.result!.results.length === 1 ? "" : "s"} parsed, PDF stored
+                  </p>
+                  {o.result!.results.map((r) => (
+                    <div key={r.statement.id}>
+                      <p className={styles.uploadPreviewTitle}>
+                        {r.entries.length} transactions from {r.statement.source} (
+                        {formatDay(r.statement.statementDate)})
+                        {r.skippedDuplicates > 0 &&
+                          ` — ${r.skippedDuplicates} duplicate${
+                            r.skippedDuplicates === 1 ? "" : "s"
+                          } already on file, skipped`}
+                        {r.statement.validationStatus === "mismatch" && (
+                          <strong> — totals mismatch, review below</strong>
+                        )}
+                      </p>
+                      {r.problems.map((p) => (
+                        <p key={p} className={styles.errorText}>
+                          {p}
+                        </p>
+                      ))}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           ))}
         </div>
