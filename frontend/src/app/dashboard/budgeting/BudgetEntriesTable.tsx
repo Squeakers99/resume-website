@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import type { BudgetEntry } from "@/lib/server-api";
 import { BUDGET_CATEGORIES } from "./budgetCategories";
 import { formatDay } from "./formatDate";
-import { recategorizeEntryAction } from "./actions";
+import { recategorizeEntryAction, updateEntryAction } from "./actions";
 import styles from "./Budgeting.module.css";
 
 type Props = { entries: BudgetEntry[] };
@@ -56,6 +56,38 @@ export default function BudgetEntriesTable({ entries }: Props) {
     startTransition(async () => {
       const res = await recategorizeEntryAction(id, category);
       if (!res.ok) setError(res.error ?? "Failed to update category");
+    });
+  };
+
+  // Click-to-edit descriptions. Local overrides keep the new name visible
+  // until the server refresh delivers the updated row.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [nameOverrides, setNameOverrides] = useState<Record<string, string>>({});
+
+  const displayName = (e: BudgetEntry) => nameOverrides[e.id] ?? e.description;
+
+  const startNameEdit = (e: BudgetEntry) => {
+    setEditingId(e.id);
+    setDraft(displayName(e));
+  };
+
+  const commitNameEdit = (entry: BudgetEntry) => {
+    setEditingId(null);
+    const name = draft.trim();
+    if (!name || name === displayName(entry)) return;
+    setError(null);
+    setNameOverrides((prev) => ({ ...prev, [entry.id]: name }));
+    startTransition(async () => {
+      const res = await updateEntryAction(entry.id, { description: name });
+      if (!res.ok) {
+        setError(res.error ?? "Failed to rename transaction");
+        setNameOverrides((prev) => {
+          const next = { ...prev };
+          delete next[entry.id];
+          return next;
+        });
+      }
     });
   };
 
@@ -164,7 +196,32 @@ export default function BudgetEntriesTable({ entries }: Props) {
               {visible.map((e) => (
                 <tr key={e.id}>
                   <td>{formatDay(e.transDate)}</td>
-                  <td className={styles.descCell}>{e.description}</td>
+                  <td className={styles.descCell}>
+                    {editingId === e.id ? (
+                      <input
+                        type="text"
+                        className={`${styles.select} ${styles.descInput}`}
+                        value={draft}
+                        autoFocus
+                        onChange={(ev) => setDraft(ev.target.value)}
+                        onBlur={() => commitNameEdit(e)}
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter") ev.currentTarget.blur();
+                          if (ev.key === "Escape") setEditingId(null);
+                        }}
+                        aria-label={`Rename ${e.description}`}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.nameButton}
+                        onClick={() => startNameEdit(e)}
+                        title="Click to rename"
+                      >
+                        {displayName(e)}
+                      </button>
+                    )}
+                  </td>
                   <td
                     className={`${styles.amountCol} ${
                       e.isCredit ? styles.creditAmount : ""

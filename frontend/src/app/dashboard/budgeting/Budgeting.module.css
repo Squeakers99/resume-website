@@ -292,6 +292,28 @@
   min-width: 220px;
 }
 
+/* Transaction name doubles as its edit affordance. */
+.nameButton {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nameButton:hover,
+.nameButton:focus-visible {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
 .amountInput {
   width: 110px;
   text-align: right;
