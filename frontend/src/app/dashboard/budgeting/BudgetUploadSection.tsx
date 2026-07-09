@@ -63,7 +63,7 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
         <p className={styles.dropzoneText}>
           {isPending
             ? "Parsing with AI…"
-            : "Drop a statement PDF or CSV here, or"}
+            : "Drop a statement PDF here, or"}
         </p>
         {!isPending && (
           <button
@@ -72,13 +72,13 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
             disabled={!backendConnected}
             onClick={() => inputRef.current?.click()}
           >
-            Choose file
+            Choose PDF
           </button>
         )}
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.csv,application/pdf,text/csv"
+          accept="application/pdf"
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0];

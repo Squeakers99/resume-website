@@ -12,12 +12,7 @@ import {
   type BudgetCategory,
   type ExtractedStatement,
 } from "../budget/domain";
-import {
-  ExtractionError,
-  extractStatementsFromCsv,
-  extractStatementsFromText,
-} from "../budget/extract";
-import { CsvParseError, looksLikeCsv, parseBmoCsv } from "../budget/csv";
+import { ExtractionError, extractStatementsFromText } from "../budget/extract";
 import { deleteStatementPdf, putStatementPdf } from "../lib/s3";
 
 const router = Router();
@@ -250,15 +245,10 @@ router.post("/statements", uploadPdf, async (req, res) => {
   try {
     await ensureBudgetTables();
 
-    const isCsv = req.file
-      ? looksLikeCsv(req.file.originalname ?? "", req.file.mimetype)
-      : false;
-    if (!req.file || (!isCsv && req.file.mimetype !== "application/pdf")) {
-      return res
-        .status(400)
-        .json({ error: "Upload a PDF or CSV file in the 'file' field" });
+    if (!req.file || req.file.mimetype !== "application/pdf") {
+      return res.status(400).json({ error: "Upload a PDF file in the 'file' field" });
     }
-    const origin = isCsv ? "csv" : "pdf";
+    const origin = "pdf"; // 'csv' remains only on historical rows
 
     // Exact-file dedupe first — cheaper than an OpenAI call.
     const contentHash = createHash("sha256").update(req.file.buffer).digest("hex");
@@ -266,46 +256,30 @@ router.post("/statements", uploadPdf, async (req, res) => {
       SELECT id FROM budget_documents WHERE content_hash = ${contentHash}
     `;
     if (docDupes.length > 0) {
-      return res.status(409).json({ error: "This exact file is already uploaded" });
+      return res.status(409).json({ error: "This exact PDF is already uploaded" });
+    }
+
+    let text: string;
+    try {
+      const parsed = await pdfParse(req.file.buffer);
+      text = parsed.text?.trim() ?? "";
+    } catch {
+      return res.status(422).json({ error: "Could not read that PDF" });
+    }
+    if (!text) {
+      return res.status(422).json({ error: "That PDF contains no extractable text" });
     }
 
     let extracted;
-    if (isCsv) {
-      try {
-        const blocks = parseBmoCsv(req.file.buffer.toString("utf8"));
-        extracted = await extractStatementsFromCsv(blocks);
-      } catch (error) {
-        if (error instanceof CsvParseError) {
-          return res.status(422).json({ error: `Could not parse that CSV: ${error.message}` });
-        }
-        console.error("CSV categorization failed", error);
-        const message =
-          error instanceof ExtractionError
-            ? `Extraction failed: ${error.message}`
-            : "Extraction failed — try again";
-        return res.status(502).json({ error: message });
-      }
-    } else {
-      let text: string;
-      try {
-        const parsed = await pdfParse(req.file.buffer);
-        text = parsed.text?.trim() ?? "";
-      } catch {
-        return res.status(422).json({ error: "Could not read that PDF" });
-      }
-      if (!text) {
-        return res.status(422).json({ error: "That PDF contains no extractable text" });
-      }
-      try {
-        extracted = await extractStatementsFromText(text);
-      } catch (error) {
-        console.error("Statement extraction failed", error);
-        const message =
-          error instanceof ExtractionError
-            ? `Extraction failed: ${error.message}`
-            : "Extraction failed — try again";
-        return res.status(502).json({ error: message });
-      }
+    try {
+      extracted = await extractStatementsFromText(text);
+    } catch (error) {
+      console.error("Statement extraction failed", error);
+      const message =
+        error instanceof ExtractionError
+          ? `Extraction failed: ${error.message}`
+          : "Extraction failed — try again";
+      return res.status(502).json({ error: message });
     }
 
     // One PDF can contain several account sections; reject the whole upload if
@@ -324,15 +298,15 @@ router.post("/statements", uploadPdf, async (req, res) => {
 
     const validations = extracted.map(validateStatement);
 
-    const filename = req.file.originalname || (isCsv ? "statement.csv" : "statement.pdf");
-    const s3Key = `statements/${contentHash.slice(0, 32)}.${isCsv ? "csv" : "pdf"}`;
+    const filename = req.file.originalname || "statement.pdf";
+    const s3Key = `statements/${contentHash.slice(0, 32)}.pdf`;
     try {
-      await putStatementPdf(s3Key, req.file.buffer, isCsv ? "text/csv" : "application/pdf");
+      await putStatementPdf(s3Key, req.file.buffer);
     } catch (error) {
-      console.error("Failed to store statement file in S3", error);
+      console.error("Failed to store statement PDF in S3", error);
       return res.status(502).json({
         error:
-          "Could not store the file in S3 — check the bucket policy allows PutObject on statements/*",
+          "Could not store the PDF in S3 — check the bucket policy allows PutObject on statements/*",
       });
     }
 

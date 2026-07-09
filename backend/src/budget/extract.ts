@@ -2,14 +2,12 @@ import OpenAI from "openai";
 import {
   ACCOUNT_TYPES,
   BUDGET_CATEGORIES,
-  toCents,
   validateStatement,
   type BudgetAccountType,
   type BudgetCategory,
   type ExtractedEntry,
   type ExtractedStatement,
 } from "./domain";
-import type { CsvBlock } from "./csv";
 
 export class ExtractionError extends Error {}
 
@@ -251,174 +249,6 @@ async function callModel(
 
 const problemCount = (statements: ExtractedStatement[]): number =>
   statements.reduce((sum, s) => sum + validateStatement(s).problems.length, 0);
-
-// ----- CSV path: structure is parsed deterministically; the model only
-// categorizes rows and identifies each block's account. -----
-
-const CSV_CATEGORIZE_PROMPT = `You categorize bank transactions for the statement owner.
-You receive numbered blocks of transactions (direction IN = money in, OUT = money out).
-For each block return its account_type, a short source label, and one category per
-transaction, in order.
-Rules:
-- The reference "13139026" is the owner's employer — always "Income". PAY/PAY
-  payroll deposits are also "Income".
-- Transfers that pay the owner's own credit card (references containing a
-  16-digit card number, e.g. "TF 0005191230232364423") are "Card Payment"
-  regardless of direction.
-- Other money-in (received e-Transfers, deposits, interest, refunds) is
-  "Payment/Credit".
-- Money-out entries get the best-fitting spending category; "Other" when
-  nothing fits.
-- account_type: "chequing" for daily-banking blocks, "savings" for
-  interest/payroll-accumulation blocks, "credit_card" only for card purchases.
-- source: a short label like "BMO Chequing 5713".`;
-
-const CSV_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["blocks"],
-  properties: {
-    blocks: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["block_index", "account_type", "source", "categories"],
-        properties: {
-          block_index: { type: "integer" },
-          account_type: { type: "string", enum: [...ACCOUNT_TYPES] },
-          source: { type: "string" },
-          categories: {
-            type: "array",
-            items: { type: "string", enum: [...BUDGET_CATEGORIES] },
-          },
-        },
-      },
-    },
-  },
-} as const;
-
-// Owner rules that must hold no matter what the model says.
-function categoryOverride(description: string, llmCategory: BudgetCategory): BudgetCategory {
-  if (description.includes("13139026") && !/\b\d{16}\b/.test(description)) return "Income";
-  if (/\b\d{16}\b/.test(description)) return "Card Payment";
-  if (/PAY\/PAY/i.test(description)) return "Income";
-  return llmCategory;
-}
-
-export async function extractStatementsFromCsv(
-  blocks: CsvBlock[]
-): Promise<ExtractedStatement[]> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new ExtractionError("OPENAI_API_KEY is not set");
-  }
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  const payloadText = blocks
-    .map(
-      (b, i) =>
-        `Block ${i} (card ${b.card}):\n` +
-        b.rows
-          .map(
-            (r, j) =>
-              `${j}. ${r.date} ${r.isCredit ? "IN" : "OUT"} $${r.amount.toFixed(2)} — ${r.description}`
-          )
-          .join("\n")
-    )
-    .join("\n\n");
-
-  const completion = await client.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: "system", content: CSV_CATEGORIZE_PROMPT },
-      { role: "user", content: payloadText },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "csv_categorization",
-        strict: true,
-        schema: CSV_SCHEMA as unknown as Record<string, unknown>,
-      },
-    },
-  });
-
-  const content = completion.choices[0]?.message?.content;
-  if (!content) throw new ExtractionError("model returned no content");
-  let parsed: {
-    blocks: Array<{
-      block_index: number;
-      account_type: BudgetAccountType;
-      source: string;
-      categories: string[];
-    }>;
-  };
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    throw new ExtractionError("model returned invalid JSON");
-  }
-
-  const usedSources = new Set<string>();
-
-  return blocks.map((block, i) => {
-    const llm =
-      parsed.blocks.find((b) => b.block_index === i) ?? parsed.blocks[i];
-    const accountType: BudgetAccountType =
-      llm && (ACCOUNT_TYPES as readonly string[]).includes(llm.account_type)
-        ? llm.account_type
-        : "chequing";
-
-    let source = (llm?.source || "Bank CSV").trim() || "Bank CSV";
-    if (!source.includes(block.card.slice(-4))) {
-      source = `${source} ${block.card.slice(-4)}`;
-    }
-    while (usedSources.has(source)) source = `${source} (2)`;
-    usedSources.add(source);
-
-    const entries: ExtractedEntry[] = block.rows.map((r, j) => {
-      const raw = llm?.categories[j];
-      const llmCategory: BudgetCategory =
-        raw && (BUDGET_CATEGORIES as readonly string[]).includes(raw)
-          ? (raw as BudgetCategory)
-          : "Other";
-      return {
-        transDate: r.date,
-        postingDate: r.date,
-        description: r.description,
-        amount: r.amount,
-        isCredit: r.isCredit,
-        category: categoryOverride(r.description, llmCategory),
-      };
-    });
-
-    const dates = block.rows.map((r) => r.date).sort();
-    const inCents = entries
-      .filter((e) => e.isCredit)
-      .reduce((s, e) => s + toCents(e.amount), 0);
-    const outCents = entries
-      .filter((e) => !e.isCredit)
-      .reduce((s, e) => s + toCents(e.amount), 0);
-    // No printed balances in a CSV — synthesize a zero-opening statement whose
-    // math is consistent by construction (callers mark these origin=csv and
-    // never use their balances for display).
-    const closingCents =
-      accountType === "credit_card" ? outCents - inCents : inCents - outCents;
-
-    return {
-      source,
-      accountType,
-      statementDate: dates[dates.length - 1],
-      periodStart: dates[0],
-      periodEnd: dates[dates.length - 1],
-      previousBalance: 0,
-      paymentsCredits: inCents / 100,
-      purchasesTotal: outCents / 100,
-      totalBalance: closingCents / 100,
-      entries,
-    };
-  });
-}
 
 // Cheap-first ladder: nano handles simple card statements; when its output
 // fails the printed-totals validation (multi-column bank layouts trip it up),
