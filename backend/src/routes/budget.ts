@@ -12,7 +12,12 @@ import {
   type BudgetCategory,
   type ExtractedStatement,
 } from "../budget/domain";
-import { ExtractionError, extractStatementsFromText } from "../budget/extract";
+import {
+  ExtractionError,
+  extractStatementsFromCsv,
+  extractStatementsFromText,
+} from "../budget/extract";
+import { CsvParseError, looksLikeCsv, parseBmoCsv } from "../budget/csv";
 import { deleteStatementPdf, putStatementPdf } from "../lib/s3";
 
 const router = Router();
@@ -111,6 +116,12 @@ async function createBudgetTables() {
     ALTER TABLE budget_statements
     ADD COLUMN IF NOT EXISTS document_id TEXT REFERENCES budget_documents(id)
   `);
+  // 'pdf' statements carry real printed balances; 'csv' ones are synthesized
+  // from transaction flow and are never used for balance tiles.
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE budget_statements
+    ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'pdf'
+  `);
 }
 
 type StatementRow = {
@@ -118,6 +129,7 @@ type StatementRow = {
   source: string;
   account_type: string;
   document_id: string | null;
+  origin: string;
   statement_date: Date;
   period_start: Date;
   period_end: Date;
@@ -149,6 +161,7 @@ const toStatement = (row: StatementRow) => ({
   source: row.source,
   accountType: row.account_type,
   documentId: row.document_id,
+  origin: row.origin,
   statementDate: isoDay(row.statement_date),
   periodStart: isoDay(row.period_start),
   periodEnd: isoDay(row.period_end),
@@ -183,6 +196,16 @@ async function revalidateStatement(
   `;
   if (stmtRows.length === 0) return null;
   const s = stmtRows[0];
+
+  // CSV statements have no printed totals to reconcile against (their summary
+  // is synthesized) — they are always considered valid.
+  if (s.origin === "csv") {
+    const updated = await prisma.$queryRaw<StatementRow[]>`
+      UPDATE budget_statements SET validation_status = 'valid'
+      WHERE id = ${statementId} RETURNING *
+    `;
+    return { statement: updated[0], problems: [] };
+  }
 
   const entryRows = await prisma.$queryRaw<EntryRow[]>`
     SELECT id, statement_id, trans_date, posting_date, description,
@@ -227,20 +250,15 @@ router.post("/statements", uploadPdf, async (req, res) => {
   try {
     await ensureBudgetTables();
 
-    if (!req.file || req.file.mimetype !== "application/pdf") {
-      return res.status(400).json({ error: "Upload a PDF file in the 'file' field" });
+    const isCsv = req.file
+      ? looksLikeCsv(req.file.originalname ?? "", req.file.mimetype)
+      : false;
+    if (!req.file || (!isCsv && req.file.mimetype !== "application/pdf")) {
+      return res
+        .status(400)
+        .json({ error: "Upload a PDF or CSV file in the 'file' field" });
     }
-
-    let text: string;
-    try {
-      const parsed = await pdfParse(req.file.buffer);
-      text = parsed.text?.trim() ?? "";
-    } catch {
-      return res.status(422).json({ error: "Could not read that PDF" });
-    }
-    if (!text) {
-      return res.status(422).json({ error: "That PDF contains no extractable text" });
-    }
+    const origin = isCsv ? "csv" : "pdf";
 
     // Exact-file dedupe first — cheaper than an OpenAI call.
     const contentHash = createHash("sha256").update(req.file.buffer).digest("hex");
@@ -248,19 +266,46 @@ router.post("/statements", uploadPdf, async (req, res) => {
       SELECT id FROM budget_documents WHERE content_hash = ${contentHash}
     `;
     if (docDupes.length > 0) {
-      return res.status(409).json({ error: "This exact PDF is already uploaded" });
+      return res.status(409).json({ error: "This exact file is already uploaded" });
     }
 
     let extracted;
-    try {
-      extracted = await extractStatementsFromText(text);
-    } catch (error) {
-      console.error("Statement extraction failed", error);
-      const message =
-        error instanceof ExtractionError
-          ? `Extraction failed: ${error.message}`
-          : "Extraction failed — try again";
-      return res.status(502).json({ error: message });
+    if (isCsv) {
+      try {
+        const blocks = parseBmoCsv(req.file.buffer.toString("utf8"));
+        extracted = await extractStatementsFromCsv(blocks);
+      } catch (error) {
+        if (error instanceof CsvParseError) {
+          return res.status(422).json({ error: `Could not parse that CSV: ${error.message}` });
+        }
+        console.error("CSV categorization failed", error);
+        const message =
+          error instanceof ExtractionError
+            ? `Extraction failed: ${error.message}`
+            : "Extraction failed — try again";
+        return res.status(502).json({ error: message });
+      }
+    } else {
+      let text: string;
+      try {
+        const parsed = await pdfParse(req.file.buffer);
+        text = parsed.text?.trim() ?? "";
+      } catch {
+        return res.status(422).json({ error: "Could not read that PDF" });
+      }
+      if (!text) {
+        return res.status(422).json({ error: "That PDF contains no extractable text" });
+      }
+      try {
+        extracted = await extractStatementsFromText(text);
+      } catch (error) {
+        console.error("Statement extraction failed", error);
+        const message =
+          error instanceof ExtractionError
+            ? `Extraction failed: ${error.message}`
+            : "Extraction failed — try again";
+        return res.status(502).json({ error: message });
+      }
     }
 
     // One PDF can contain several account sections; reject the whole upload if
@@ -279,15 +324,15 @@ router.post("/statements", uploadPdf, async (req, res) => {
 
     const validations = extracted.map(validateStatement);
 
-    const filename = req.file.originalname || "statement.pdf";
-    const s3Key = `statements/${contentHash.slice(0, 32)}.pdf`;
+    const filename = req.file.originalname || (isCsv ? "statement.csv" : "statement.pdf");
+    const s3Key = `statements/${contentHash.slice(0, 32)}.${isCsv ? "csv" : "pdf"}`;
     try {
-      await putStatementPdf(s3Key, req.file.buffer);
+      await putStatementPdf(s3Key, req.file.buffer, isCsv ? "text/csv" : "application/pdf");
     } catch (error) {
-      console.error("Failed to store statement PDF in S3", error);
+      console.error("Failed to store statement file in S3", error);
       return res.status(502).json({
         error:
-          "Could not store the PDF in S3 — check the bucket policy allows PutObject on statements/*",
+          "Could not store the file in S3 — check the bucket policy allows PutObject on statements/*",
       });
     }
 
@@ -299,18 +344,22 @@ router.post("/statements", uploadPdf, async (req, res) => {
       `;
       const documentId = docRows[0].id;
 
-      const results: Array<{ statement: StatementRow; entries: EntryRow[] }> = [];
+      const results: Array<{
+        statement: StatementRow;
+        entries: EntryRow[];
+        skippedDuplicates: number;
+      }> = [];
       for (let i = 0; i < extracted.length; i++) {
         const s = extracted[i];
         const validation = validations[i];
         const stmtRows = await tx.$queryRaw<StatementRow[]>`
           INSERT INTO budget_statements (
-            source, account_type, document_id, statement_date, period_start, period_end,
+            source, account_type, document_id, origin, statement_date, period_start, period_end,
             previous_balance_cents, payments_credits_cents,
             purchases_total_cents, total_balance_cents,
             validation_status, extracted_purchases_sum_cents
           ) VALUES (
-            ${s.source}, ${s.accountType}, ${documentId}, ${s.statementDate}::date,
+            ${s.source}, ${s.accountType}, ${documentId}, ${origin}, ${s.statementDate}::date,
             ${s.periodStart}::date, ${s.periodEnd}::date,
             ${toCents(s.previousBalance)}, ${toCents(s.paymentsCredits)},
             ${toCents(s.purchasesTotal)}, ${toCents(s.totalBalance)},
@@ -321,7 +370,24 @@ router.post("/statements", uploadPdf, async (req, res) => {
         const statement = stmtRows[0];
 
         const entries: EntryRow[] = [];
+        let skippedDuplicates = 0;
         for (const e of s.entries) {
+          // The same transaction can arrive via different formats (a May CSV
+          // and a May PDF); never record it twice. Same-statement repeats are
+          // allowed — a single document listing identical rows is authoritative.
+          const dupe = await tx.$queryRaw<Array<{ found: boolean }>>`
+            SELECT EXISTS (
+              SELECT 1 FROM budget_entries
+              WHERE trans_date = ${e.transDate}::date
+                AND amount_cents = ${toCents(e.amount)}
+                AND is_credit = ${e.isCredit}
+                AND statement_id <> ${statement.id}
+            ) AS found
+          `;
+          if (dupe[0].found) {
+            skippedDuplicates++;
+            continue;
+          }
           const rows = await tx.$queryRaw<EntryRow[]>`
             INSERT INTO budget_entries (
               statement_id, trans_date, posting_date, description,
@@ -335,7 +401,7 @@ router.post("/statements", uploadPdf, async (req, res) => {
           `;
           entries.push(rows[0]);
         }
-        results.push({ statement, entries });
+        results.push({ statement, entries, skippedDuplicates });
       }
       return { documentId, results };
     });
@@ -346,6 +412,7 @@ router.post("/statements", uploadPdf, async (req, res) => {
         statement: toStatement(r.statement),
         entries: r.entries.map(toEntry),
         problems: validations[i].problems,
+        skippedDuplicates: r.skippedDuplicates,
       })),
     });
   } catch (error) {
@@ -582,10 +649,12 @@ router.get("/summary", async (_req, res) => {
   try {
     await ensureBudgetTables();
 
+    // Balance tiles trust only printed (PDF) balances — CSV summaries are
+    // synthesized from transaction flow and would show meaningless numbers.
     const latestOf = (accountType: string) => prisma.$queryRaw<StatementRow[]>`
       SELECT s.*, (SELECT COUNT(*)::int FROM budget_entries e WHERE e.statement_id = s.id) AS entry_count
       FROM budget_statements s
-      WHERE s.account_type = ${accountType}
+      WHERE s.account_type = ${accountType} AND s.origin = 'pdf'
       ORDER BY s.statement_date DESC
       LIMIT 1
     `;

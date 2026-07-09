@@ -40,13 +40,16 @@ export async function uploadStatementAction(
 
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
-      return { ok: false, error: "Choose a PDF statement to upload" };
+      return { ok: false, error: "Choose a PDF or CSV statement to upload" };
     }
-    if (file.type !== "application/pdf") {
-      return { ok: false, error: "Only PDF files are supported" };
+    const isCsv =
+      /\.csv$/i.test(file.name) ||
+      ["text/csv", "application/csv", "application/vnd.ms-excel"].includes(file.type);
+    if (!isCsv && file.type !== "application/pdf") {
+      return { ok: false, error: "Only PDF or CSV files are supported" };
     }
     if (file.size > MAX_PDF_BYTES) {
-      return { ok: false, error: "PDF is larger than 10 MB" };
+      return { ok: false, error: "File is larger than 10 MB" };
     }
 
     const fd = new FormData();

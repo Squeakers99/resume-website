@@ -24,13 +24,17 @@ export function requireBucket(): string {
   return bucket;
 }
 
-export async function putStatementPdf(key: string, body: Buffer): Promise<void> {
+export async function putStatementPdf(
+  key: string,
+  body: Buffer,
+  contentType = "application/pdf"
+): Promise<void> {
   await s3().send(
     new PutObjectCommand({
       Bucket: requireBucket(),
       Key: key,
       Body: body,
-      ContentType: "application/pdf",
+      ContentType: contentType,
     })
   );
 }

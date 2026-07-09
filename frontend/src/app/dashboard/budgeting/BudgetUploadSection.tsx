@@ -63,7 +63,7 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
         <p className={styles.dropzoneText}>
           {isPending
             ? "Parsing with AI…"
-            : "Drop a statement PDF here, or"}
+            : "Drop a statement PDF or CSV here, or"}
         </p>
         {!isPending && (
           <button
@@ -72,13 +72,13 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
             disabled={!backendConnected}
             onClick={() => inputRef.current?.click()}
           >
-            Choose PDF
+            Choose file
           </button>
         )}
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf"
+          accept=".pdf,.csv,application/pdf,text/csv"
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -105,6 +105,10 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
               <p className={styles.uploadPreviewTitle}>
                 {r.entries.length} transactions from {r.statement.source} (
                 {formatDay(r.statement.statementDate)})
+                {r.skippedDuplicates > 0 &&
+                  ` — ${r.skippedDuplicates} duplicate${
+                    r.skippedDuplicates === 1 ? "" : "s"
+                  } already on file, skipped`}
                 {r.statement.validationStatus === "mismatch" && (
                   <strong> — totals mismatch, review below</strong>
                 )}
@@ -128,6 +132,7 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
             <li key={s.id} className={styles.statementItem}>
               <span>
                 {formatDay(s.statementDate)} · {s.source} · {s.entryCount ?? "?"} entries
+                {s.origin === "csv" && " · CSV"}
                 {s.validationStatus === "mismatch" && (
                   <strong className={styles.errorText}> · mismatch</strong>
                 )}

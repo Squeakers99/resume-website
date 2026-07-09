@@ -108,6 +108,7 @@ export type BudgetStatement = {
   source: string;
   accountType: BudgetAccountType;
   documentId: string | null;
+  origin: "pdf" | "csv";
   statementDate: string;
   periodStart: string;
   periodEnd: string;
@@ -148,6 +149,7 @@ export type BudgetUploadResult = {
     statement: BudgetStatement;
     entries: BudgetEntry[];
     problems: string[];
+    skippedDuplicates: number;
   }>;
 };
 
