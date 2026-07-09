@@ -298,6 +298,11 @@
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
 }
 
+/* Expanded chart modal: wider than the review modal, chart fills it. */
+.chartModal {
+  width: min(1200px, 100%);
+}
+
 .modalHeader {
   display: flex;
   align-items: flex-start;

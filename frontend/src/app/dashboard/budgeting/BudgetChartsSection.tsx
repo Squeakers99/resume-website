@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -204,6 +204,18 @@ export default function BudgetChartsSection({
   // The selection can outlive its month (e.g. that statement was deleted).
   const effectiveMonth = months.includes(selectedMonth) ? selectedMonth : "all";
 
+  // "Expand" modal: which time chart is showing full-size.
+  const [expanded, setExpanded] = useState<"bar" | "line" | null>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [expanded]);
+
   const donutData = useMemo(() => {
     if (effectiveMonth === "all") return foldRows(categoryTotals);
     return foldRows(monthlyByCategory.filter((m) => m.month === effectiveMonth));
@@ -290,6 +302,87 @@ export default function BudgetChartsSection({
     </div>
   );
 
+  // Shared chart definitions so the inline (split-axis, scrolling) and modal
+  // (full-width, own axis) renderings can never drift apart.
+  const barChartEl = (withAxis: boolean) => (
+    <BarChart data={barData} margin={TIME_MARGIN}>
+      <CartesianGrid stroke="var(--card-edge)" vertical={false} />
+      <XAxis
+        dataKey="month"
+        height={30}
+        fontSize={12}
+        tick={{ fill: "var(--text-muted)" }}
+        axisLine={{ stroke: "var(--card-edge)" }}
+        tickLine={{ stroke: "var(--card-edge)" }}
+        tickFormatter={(m) => formatMonth(String(m))}
+      />
+      <YAxis
+        hide={!withAxis}
+        domain={[0, barMax]}
+        ticks={ticksFor(barMax)}
+        width={64}
+        tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+        tickMargin={4}
+        axisLine={{ stroke: "var(--card-edge)" }}
+        tickLine={{ stroke: "var(--card-edge)" }}
+        tickFormatter={dollars}
+      />
+      <Tooltip
+        formatter={(value) => money(Number(value))}
+        labelFormatter={(label) => formatMonth(String(label))}
+        contentStyle={tooltipContentStyle}
+        itemStyle={tooltipItemStyle}
+        labelStyle={tooltipLabelStyle}
+      />
+      {displayOrder.map((c) => (
+        <Bar
+          key={c}
+          dataKey={c}
+          stackId="spend"
+          fill={colorFor(c)}
+          stroke="var(--card)"
+          strokeWidth={2}
+          maxBarSize={24}
+        />
+      ))}
+    </BarChart>
+  );
+
+  const lineChartEl = (withAxis: boolean) => (
+    <LineChart data={cardBills} margin={TIME_MARGIN}>
+      <CartesianGrid stroke="var(--card-edge)" vertical={false} />
+      <XAxis
+        dataKey="month"
+        height={30}
+        fontSize={12}
+        tick={{ fill: "var(--text-muted)" }}
+        axisLine={{ stroke: "var(--card-edge)" }}
+        tickLine={{ stroke: "var(--card-edge)" }}
+        tickFormatter={(m) => formatMonth(String(m))}
+      />
+      <YAxis
+        hide={!withAxis}
+        domain={[0, lineMax]}
+        ticks={ticksFor(lineMax)}
+        width={64}
+        tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+        tickMargin={4}
+        axisLine={{ stroke: "var(--card-edge)" }}
+        tickLine={{ stroke: "var(--card-edge)" }}
+        tickFormatter={dollars}
+      />
+      <Tooltip content={<BillTooltip />} />
+      <Line
+        type="monotone"
+        dataKey="total"
+        stroke="var(--series-1)"
+        strokeWidth={2}
+        dot={{ r: 4, fill: "var(--series-1)", stroke: "var(--card)", strokeWidth: 2 }}
+        activeDot={{ r: 6 }}
+      />
+    </LineChart>
+  );
+
   return (
     <section className={styles.chartsGrid} aria-label="Spending charts">
       {/* One shared legend for every categorical chart. */}
@@ -354,7 +447,17 @@ export default function BudgetChartsSection({
       </div>
 
       <div className={styles.card}>
-        <h2 className={styles.cardHeading}>Monthly spending</h2>
+        <div className={styles.tableHeader}>
+          <h2 className={styles.cardHeading}>Monthly spending</h2>
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={() => setExpanded("bar")}
+            aria-label="Expand monthly spending chart"
+          >
+            ⤢ Expand
+          </button>
+        </div>
         <div className={styles.stickyChart}>
           {stickyYAxis(barMax)}
           <div className={styles.chartScroll}>
@@ -362,39 +465,9 @@ export default function BudgetChartsSection({
               className={styles.chartBox}
               style={{ minWidth: timeChartMinWidth(barData.length) }}
             >
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={barData} margin={TIME_MARGIN}>
-              <CartesianGrid stroke="var(--card-edge)" vertical={false} />
-              <XAxis
-                dataKey="month"
-                height={30}
-                fontSize={12}
-                tick={{ fill: "var(--text-muted)" }}
-                axisLine={{ stroke: "var(--card-edge)" }}
-                tickLine={{ stroke: "var(--card-edge)" }}
-                tickFormatter={(m) => formatMonth(String(m))}
-              />
-              <YAxis hide domain={[0, barMax]} ticks={ticksFor(barMax)} />
-              <Tooltip
-                formatter={(value) => money(Number(value))}
-                labelFormatter={(label) => formatMonth(String(label))}
-                contentStyle={tooltipContentStyle}
-                itemStyle={tooltipItemStyle}
-                labelStyle={tooltipLabelStyle}
-              />
-              {displayOrder.map((c) => (
-                <Bar
-                  key={c}
-                  dataKey={c}
-                  stackId="spend"
-                  fill={colorFor(c)}
-                  stroke="var(--card)"
-                  strokeWidth={2}
-                  maxBarSize={24}
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={260}>
+                {barChartEl(false)}
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
@@ -402,7 +475,18 @@ export default function BudgetChartsSection({
 
       {cardBills.length > 0 && (
         <div className={styles.card}>
-          <h2 className={styles.cardHeading}>Card bills by month</h2>
+          <div className={styles.tableHeader}>
+            {/* Single series: the title names it, so no legend (dataviz rule). */}
+            <h2 className={styles.cardHeading}>Card bills by month</h2>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => setExpanded("line")}
+              aria-label="Expand card bills chart"
+            >
+              ⤢ Expand
+            </button>
+          </div>
           <div className={styles.stickyChart}>
             {stickyYAxis(lineMax)}
             <div className={styles.chartScroll}>
@@ -410,33 +494,43 @@ export default function BudgetChartsSection({
                 className={styles.chartBox}
                 style={{ minWidth: timeChartMinWidth(cardBills.length) }}
               >
-            <ResponsiveContainer width="100%" height={260}>
-              {/* Single series: the title names it, so no legend (dataviz rule). */}
-              <LineChart data={cardBills} margin={TIME_MARGIN}>
-                <CartesianGrid stroke="var(--card-edge)" vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  height={30}
-                  fontSize={12}
-                  tick={{ fill: "var(--text-muted)" }}
-                  axisLine={{ stroke: "var(--card-edge)" }}
-                  tickLine={{ stroke: "var(--card-edge)" }}
-                  tickFormatter={(m) => formatMonth(String(m))}
-                />
-                <YAxis hide domain={[0, lineMax]} ticks={ticksFor(lineMax)} />
-                <Tooltip content={<BillTooltip />} />
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  stroke="var(--series-1)"
-                  strokeWidth={2}
-                  dot={{ r: 4, fill: "var(--series-1)", stroke: "var(--card)", strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+                <ResponsiveContainer width="100%" height={260}>
+                  {lineChartEl(false)}
+                </ResponsiveContainer>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {expanded && (
+        <div
+          className={styles.modalOverlay}
+          role="presentation"
+          onClick={() => setExpanded(null)}
+        >
+          <div
+            className={`${styles.modal} ${styles.chartModal}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={expanded === "bar" ? "Monthly spending" : "Card bills by month"}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <h2 className={styles.cardHeading}>
+                {expanded === "bar" ? "Monthly spending" : "Card bills by month"}
+              </h2>
+              <button
+                type="button"
+                className={styles.btn}
+                onClick={() => setExpanded(null)}
+              >
+                Close
+              </button>
+            </div>
+            <ResponsiveContainer width="100%" height={480}>
+              {expanded === "bar" ? barChartEl(true) : lineChartEl(true)}
+            </ResponsiveContainer>
           </div>
         </div>
       )}
