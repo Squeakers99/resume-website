@@ -13,7 +13,7 @@ import {
   type ExtractedStatement,
 } from "../budget/domain";
 import { ExtractionError, extractStatementsFromText } from "../budget/extract";
-import { deleteStatementPdf, putStatementPdf } from "../lib/s3";
+import { deleteStatementPdf, putStatementPdf, statementKeyPrefix } from "../lib/s3";
 
 const router = Router();
 
@@ -299,14 +299,13 @@ router.post("/statements", uploadPdf, async (req, res) => {
     const validations = extracted.map(validateStatement);
 
     const filename = req.file.originalname || "statement.pdf";
-    const s3Key = `statements/${contentHash.slice(0, 32)}.pdf`;
+    const s3Key = `${statementKeyPrefix()}statements/${contentHash.slice(0, 32)}.pdf`;
     try {
       await putStatementPdf(s3Key, req.file.buffer);
     } catch (error) {
       console.error("Failed to store statement PDF in S3", error);
       return res.status(502).json({
-        error:
-          "Could not store the PDF in S3 — check the bucket policy allows PutObject on statements/*",
+        error: `Could not store the PDF in S3 — check the IAM policy allows PutObject on ${statementKeyPrefix()}statements/*`,
       });
     }
 

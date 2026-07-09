@@ -16,6 +16,13 @@ function s3(): S3Client {
   return client;
 }
 
+// Non-production runs archive under testing/ so local testing never touches
+// the real statement archive. Keys are stored absolute in budget_documents,
+// so deletes work no matter which environment wrote them.
+export function statementKeyPrefix(): string {
+  return process.env.NODE_ENV === "production" ? "" : "testing/";
+}
+
 export function requireBucket(): string {
   const bucket = process.env.S3_BUCKET;
   if (!bucket) {
