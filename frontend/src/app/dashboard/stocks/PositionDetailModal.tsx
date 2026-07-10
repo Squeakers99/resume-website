@@ -186,47 +186,6 @@ export default function PositionDetailModal({ position, onClose }: Props) {
           </button>
         </div>
 
-        <section className={styles.statRow} aria-label="Position">
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Quantity</span>
-            <span className={styles.statValue}>{position.quantity.toLocaleString("en-CA")}</span>
-          </div>
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Price</span>
-            <span className={styles.statValue}>
-              {position.price === null ? "—" : money(position.price, position.currency)}
-            </span>
-          </div>
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Value (CAD)</span>
-            <span className={styles.statValue}>{money(position.value)}</span>
-          </div>
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Day</span>
-            <span
-              className={`${styles.statValue} ${
-                position.dayChange === null ? "" : position.dayChange >= 0 ? styles.gain : styles.loss
-              }`}
-            >
-              {position.dayChange === null ? "—" : signedMoney(position.dayChange, position.currency)}
-            </span>
-          </div>
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Total return</span>
-            <span
-              className={`${styles.statValue} ${
-                position.totalReturn === null
-                  ? ""
-                  : position.totalReturn >= 0
-                    ? styles.gain
-                    : styles.loss
-              }`}
-            >
-              {position.totalReturn === null ? "—" : signedMoney(position.totalReturn)}
-            </span>
-          </div>
-        </section>
-
         <div className={styles.periodRow} role="group" aria-label="Chart period">
           {PERIODS.map((p) => (
             <button
@@ -251,7 +210,9 @@ export default function PositionDetailModal({ position, onClose }: Props) {
           <p className={styles.emptyText}>No price data for this period.</p>
         ) : (
           <div className={styles.chartBox}>
-            <ResponsiveContainer width="100%" height="100%">
+            {/* Numeric height: a percentage measures 0 inside a freshly
+                mounted fixed overlay and renders an invisible chart. */}
+            <ResponsiveContainer width="100%" height={260}>
               <LineChart data={points} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="var(--card-edge)" vertical={false} />
                 <XAxis
@@ -293,6 +254,49 @@ export default function PositionDetailModal({ position, onClose }: Props) {
           </div>
         )}
 
+        <div className={styles.modalGrid}>
+          <div className={styles.modalLeft}>
+        <section className={styles.statRow} aria-label="Position">
+          <div className={styles.statTile}>
+            <span className={styles.statLabel}>Quantity</span>
+            <span className={styles.statValue}>{position.quantity.toLocaleString("en-CA")}</span>
+          </div>
+          <div className={styles.statTile}>
+            <span className={styles.statLabel}>Price</span>
+            <span className={styles.statValue}>
+              {position.price === null ? "—" : money(position.price, position.currency)}
+            </span>
+          </div>
+          <div className={styles.statTile}>
+            <span className={styles.statLabel}>Value (CAD)</span>
+            <span className={styles.statValue}>{money(position.value)}</span>
+          </div>
+          <div className={styles.statTile}>
+            <span className={styles.statLabel}>Day</span>
+            <span
+              className={`${styles.statValue} ${
+                position.dayChange === null ? "" : position.dayChange >= 0 ? styles.gain : styles.loss
+              }`}
+            >
+              {position.dayChange === null ? "—" : signedMoney(position.dayChange, position.currency)}
+            </span>
+          </div>
+          <div className={styles.statTile}>
+            <span className={styles.statLabel}>Total return</span>
+            <span
+              className={`${styles.statValue} ${
+                position.totalReturn === null
+                  ? ""
+                  : position.totalReturn >= 0
+                    ? styles.gain
+                    : styles.loss
+              }`}
+            >
+              {position.totalReturn === null ? "—" : signedMoney(position.totalReturn)}
+            </span>
+          </div>
+        </section>
+
         <section aria-label="Fundamentals">
           <h3 className={styles.modalSectionHeading}>Fundamentals</h3>
           {detailError ? (
@@ -316,8 +320,10 @@ export default function PositionDetailModal({ position, onClose }: Props) {
           )}
         </section>
 
-        <section aria-label="News">
-          <h3 className={styles.modalSectionHeading}>News</h3>
+          </div>
+
+          <section className={styles.modalRight} aria-label="News">
+            <h3 className={styles.modalSectionHeading}>News</h3>
           {newsError ? (
             <p className={styles.connectError} role="alert">
               {newsError}
@@ -342,7 +348,8 @@ export default function PositionDetailModal({ position, onClose }: Props) {
               ))}
             </ul>
           )}
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );
