@@ -8,6 +8,7 @@ import styles from "./Dashboard.module.css";
 const DASHBOARDS = [
   { label: "/dashboard", subtitle: "Workspace", href: "/dashboard" },
   { label: "/budgeting", subtitle: "Budget tracker", href: "/dashboard/budgeting" },
+  { label: "/stocks", subtitle: "Portfolio", href: "/dashboard/stocks" },
 ];
 
 export default function DashboardTitleMenu() {

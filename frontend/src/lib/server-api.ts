@@ -289,3 +289,52 @@ export async function listRecurring(): Promise<BudgetEntry[]> {
   const res = await dashboardFetch("/budget/recurring");
   return res.json();
 }
+
+// ----- Stocks dashboard (Wealthsimple) -----
+
+export type StocksStatus = "connected" | "disconnected" | "never_connected";
+
+export type StocksAccount = {
+  id: string;
+  label: string;
+  type: string;
+  currency: string;
+  value: number;
+};
+
+export type StocksPosition = {
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  quantity: number;
+  price: number | null;
+  currency: string;
+  value: number; // CAD
+  dayChange: number | null; // native currency
+  totalReturn: number | null; // CAD
+  accountIds: string[];
+};
+
+export type StocksPortfolio = {
+  summary: {
+    totalValue: number;
+    dayPnl: number | null;
+    totalPnl: number | null;
+    totalPnlRate: number | null;
+  };
+  accounts: StocksAccount[];
+  positions: StocksPosition[];
+  fetchedAt: string;
+  stale: boolean;
+};
+
+export async function getStocksStatus(): Promise<StocksStatus> {
+  const res = await dashboardFetch("/stocks/status");
+  const body = (await res.json()) as { status: StocksStatus };
+  return body.status;
+}
+
+export async function getStocksPortfolio(): Promise<StocksPortfolio> {
+  const res = await dashboardFetch("/stocks/portfolio");
+  return res.json();
+}
