@@ -338,3 +338,19 @@ export async function getStocksPortfolio(): Promise<StocksPortfolio> {
   const res = await dashboardFetch("/stocks/portfolio");
   return res.json();
 }
+
+export async function startStocksConnect(): Promise<{
+  otpRequired: boolean;
+  connected?: boolean;
+}> {
+  const res = await dashboardFetch("/stocks/connect/start", { method: "POST" });
+  return res.json();
+}
+
+export async function submitStocksOtp(code: string): Promise<{ connected: boolean }> {
+  const res = await dashboardFetch("/stocks/connect/otp", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+  return res.json();
+}

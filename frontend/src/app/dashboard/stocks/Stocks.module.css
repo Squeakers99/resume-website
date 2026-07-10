@@ -206,3 +206,45 @@
   height: 10px;
   border-radius: 3px;
 }
+
+.connectButton {
+  align-self: flex-start;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 85%, var(--text-main));
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  cursor: pointer;
+}
+
+.connectButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.otpRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.otpInput {
+  width: 140px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.15em;
+}
+
+.connectError {
+  margin: 0;
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--loss);
+}

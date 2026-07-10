@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "crypto";
 import {
   buildSummary,
   mapAccounts,
@@ -14,7 +15,13 @@ import {
   saveSession,
   writeDailySnapshot,
 } from "../stocks/sessionStore";
-import { WsAuthError, WsClient } from "../stocks/wsClient";
+import {
+  bootstrapDeviceAndClient,
+  loginWithPassword,
+  OtpRequiredError,
+  WsAuthError,
+  WsClient,
+} from "../stocks/wsClient";
 
 const router = Router();
 
@@ -102,6 +109,90 @@ router.get("/status", async (_req, res) => {
   } catch (error) {
     console.error("Failed to read stocks session status", error);
     res.status(500).json({ error: "Failed to read Wealthsimple status" });
+  }
+});
+
+// In-dashboard connect flow. The pending bootstrap lives in memory: the
+// backend is a single instance, and losing it (restart) just means pressing
+// Connect again. Credentials come from the backend env, never the browser —
+// the browser only supplies the one-time 2FA code.
+type PendingConnect = { wssdi: string; clientId: string; sessionId: string; startedAt: number };
+let pendingConnect: PendingConnect | null = null;
+const PENDING_CONNECT_TTL_MS = 10 * 60 * 1000;
+
+router.post("/connect/start", async (_req, res) => {
+  try {
+    const email = process.env.WS_EMAIL;
+    const password = process.env.WS_PASSWORD;
+    if (!email || !password) {
+      return res
+        .status(503)
+        .json({ error: "WS_EMAIL and WS_PASSWORD are not set on the backend" });
+    }
+
+    const { wssdi, clientId } = await bootstrapDeviceAndClient();
+    const sessionId = randomUUID();
+    try {
+      // This attempt is what makes Wealthsimple issue the 2FA challenge
+      // (and send the SMS code, for SMS users).
+      const session = await loginWithPassword({ email, password, wssdi, clientId, sessionId });
+      pendingConnect = null;
+      await saveSession(session);
+      cache = null;
+      return res.json({ otpRequired: false, connected: true });
+    } catch (error) {
+      if (error instanceof OtpRequiredError) {
+        pendingConnect = { wssdi, clientId, sessionId, startedAt: Date.now() };
+        return res.json({ otpRequired: true });
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error("Wealthsimple connect start failed", error);
+    res.status(502).json({ error: "Couldn't start the Wealthsimple login" });
+  }
+});
+
+router.post("/connect/otp", async (req, res) => {
+  try {
+    const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+    if (!/^[a-zA-Z0-9-]{4,32}$/.test(code)) {
+      return res.status(400).json({ error: "Enter the 2FA code" });
+    }
+    if (!pendingConnect || Date.now() - pendingConnect.startedAt > PENDING_CONNECT_TTL_MS) {
+      pendingConnect = null;
+      return res.status(409).json({ error: "No login in progress — press Connect again" });
+    }
+    const email = process.env.WS_EMAIL;
+    const password = process.env.WS_PASSWORD;
+    if (!email || !password) {
+      return res
+        .status(503)
+        .json({ error: "WS_EMAIL and WS_PASSWORD are not set on the backend" });
+    }
+
+    try {
+      const session = await loginWithPassword({
+        email,
+        password,
+        otp: code,
+        wssdi: pendingConnect.wssdi,
+        clientId: pendingConnect.clientId,
+        sessionId: pendingConnect.sessionId,
+      });
+      pendingConnect = null;
+      await saveSession(session);
+      cache = null;
+      res.json({ connected: true });
+    } catch {
+      // Almost always a wrong/expired code; keep the pending state for a retry.
+      // Deliberately not logging the error object: nothing useful beyond the
+      // WS error body, and the code itself must never be logged.
+      res.status(401).json({ error: "Wealthsimple rejected the code — try again" });
+    }
+  } catch (error) {
+    console.error("Wealthsimple connect otp failed", error);
+    res.status(500).json({ error: "Failed to submit the code" });
   }
 });
 

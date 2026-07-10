@@ -8,6 +8,7 @@ import {
 import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import AllocationDonut from "./AllocationDonut";
+import ConnectCard from "./ConnectCard";
 import styles from "./Stocks.module.css";
 
 const money = (n: number, currency = "CAD") =>
@@ -46,18 +47,19 @@ export default async function StocksPage() {
       <DashboardTitleSection backendConnected={backendConnected} />
 
       {!portfolio ? (
-        <section className={styles.card} aria-label="Wealthsimple connection">
-          <h2 className={styles.cardHeading}>Wealthsimple not connected</h2>
-          <p className={styles.emptyText}>
-            {!backendConnected
+        <ConnectCard
+          headline="Wealthsimple not connected"
+          detail={
+            !backendConnected
               ? "The backend is unreachable."
               : fetchError
                 ? `Couldn't fetch the portfolio: ${fetchError}`
                 : status === "never_connected"
-                  ? "No Wealthsimple session on file. Run pnpm ws:login in backend/ to connect."
-                  : "The Wealthsimple session expired. Run pnpm ws:login in backend/ to reconnect."}
-          </p>
-        </section>
+                  ? "No Wealthsimple session on file. Connect below (or run pnpm ws:login in backend/)."
+                  : "The Wealthsimple session expired. Reconnect below (or run pnpm ws:login in backend/)."
+          }
+          canConnect={backendConnected}
+        />
       ) : (
         <>
           {portfolio.stale && (
