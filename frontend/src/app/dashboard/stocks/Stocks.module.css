@@ -413,7 +413,7 @@
 /* Detail modal layout: chart full width, stats/fundamentals left, news right */
 .modalGrid {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(240px, 2fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
 }
@@ -440,4 +440,66 @@
     border-left: none;
     padding-left: 0;
   }
+}
+
+/* News as individual widgets + TLDR */
+.newsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) 96%, var(--bg-1));
+  font-size: 0.78rem;
+}
+
+.newsCard a {
+  color: var(--text-main);
+  text-decoration: none;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.newsCard a:hover {
+  text-decoration: underline;
+}
+
+.newsTldr {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--series-1, #3987e5) 45%, var(--card-edge));
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--series-1, #3987e5) 6%, var(--card));
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+
+/* Modal scrollbar: thin, theme-colored, rounded (same as budgeting) */
+.modal {
+  scrollbar-width: thin;
+  scrollbar-color: var(--card-edge) transparent;
+}
+
+.modal::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal::-webkit-scrollbar-thumb {
+  background: var(--card-edge);
+  border-radius: 999px;
+}
+
+.modal::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--card-edge) 70%, var(--text-muted));
 }

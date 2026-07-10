@@ -18,6 +18,7 @@ import type {
   StocksSecurityDetail,
 } from "@/lib/server-api";
 import { securityChartAction, securityDetailAction, securityNewsAction } from "./actions";
+import { formatDayFromDate } from "./formatDate";
 import styles from "./Stocks.module.css";
 
 const PERIODS: Array<{ id: StocksChartPeriod; label: string }> = [
@@ -60,11 +61,8 @@ function labelFor(period: StocksChartPeriod) {
   return (t: unknown) => {
     const d = new Date(String(t));
     return period === "ONE_DAY"
-      ? d.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: false })
-      : d
-          .toLocaleDateString("en-CA", { day: "2-digit", month: "short", year: "2-digit" })
-          .toUpperCase()
-          .replace(/,/g, "");
+      ? `${formatDayFromDate(d)} ${d.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: false })}`
+      : formatDayFromDate(d);
   };
 }
 
@@ -76,7 +74,7 @@ export default function PositionDetailModal({ position, onClose }: Props) {
   const [points, setPoints] = useState<StocksChartPoint[] | null>(null);
   const [chartError, setChartError] = useState<string | null>(null);
   const [period, setPeriod] = useState<StocksChartPeriod>("ONE_MONTH");
-  const [news, setNews] = useState<StocksNewsItem[] | null>(null);
+  const [news, setNews] = useState<{ items: StocksNewsItem[]; tldr: string | null } | null>(null);
   const [newsError, setNewsError] = useState<string | null>(null);
   const [chartPending, startChart] = useTransition();
 
@@ -97,7 +95,7 @@ export default function PositionDetailModal({ position, onClose }: Props) {
     });
     securityNewsAction(position.securityId).then((r) => {
       if (cancelled) return;
-      if (r.ok) setNews(r.items);
+      if (r.ok) setNews({ items: r.items, tldr: r.tldr });
       else setNewsError(r.error);
     });
     return () => {
@@ -330,23 +328,31 @@ export default function PositionDetailModal({ position, onClose }: Props) {
             </p>
           ) : !news ? (
             <p className={styles.emptyText}>Loading news…</p>
-          ) : news.length === 0 ? (
+          ) : news.items.length === 0 ? (
             <p className={styles.emptyText}>No recent articles found.</p>
           ) : (
-            <ul className={styles.newsList}>
-              {news.map((n) => (
-                <li key={n.url} className={styles.newsItem}>
+            <>
+              {news.tldr && (
+                <p className={styles.newsTldr}>
+                  <span className={styles.statLabel}>TLDR</span>
+                  {news.tldr}
+                </p>
+              )}
+              <ul className={styles.newsList}>
+                {news.items.map((n) => (
+                <li key={n.url} className={styles.newsCard}>
                   <a href={n.url} target="_blank" rel="noopener noreferrer">
                     {n.title}
                   </a>
                   <span className={styles.newsMeta}>
-                    {[n.source, n.publishedAt ? new Date(n.publishedAt).toLocaleDateString("en-CA") : null]
+                    {[n.source, n.publishedAt ? formatDayFromDate(new Date(n.publishedAt)) : null]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
                 </li>
               ))}
-            </ul>
+              </ul>
+            </>
           )}
           </section>
         </div>

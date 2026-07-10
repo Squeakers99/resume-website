@@ -427,7 +427,9 @@ export async function getSecurityChart(
   return res.json();
 }
 
-export async function getSecurityNews(id: string): Promise<{ items: StocksNewsItem[] }> {
+export async function getSecurityNews(
+  id: string
+): Promise<{ items: StocksNewsItem[]; tldr: string | null }> {
   const res = await dashboardFetch(`/stocks/securities/${encodeURIComponent(id)}/news`);
   return res.json();
 }

@@ -1,3 +1,5 @@
+import OpenAI from "openai";
+
 // Company news via Google News RSS search — keyless, best-effort. The feed is
 // public data; a tolerant regex parse beats an XML dependency for one endpoint.
 export type NewsItem = {
@@ -47,4 +49,42 @@ export async function fetchCompanyNews(
     items.push({ title, url, source: pick("source"), publishedAt: pick("pubDate") });
   }
   return items;
+}
+
+// 2-3 sentence TLDR of the most important headlines. Best-effort: returns
+// null (and the UI hides the block) when OPENAI_API_KEY is unset or the
+// call fails — news must still render without it.
+export async function summarizeNews(
+  companyName: string,
+  symbol: string,
+  items: NewsItem[]
+): Promise<string | null> {
+  if (!process.env.OPENAI_API_KEY || items.length === 0) return null;
+  try {
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const headlines = items
+      .map((i) => `- ${i.title}${i.source ? ` (${i.source})` : ""}`)
+      .join("\n");
+    const completion = await client.chat.completions.create({
+      model: "gpt-4.1-nano",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You summarize stock-news headlines for a personal portfolio dashboard. Write a 2-3 sentence TLDR of the most important, market-relevant items only. Plain text, no markdown, no preamble.",
+        },
+        {
+          role: "user",
+          content: `Company: ${companyName} (${symbol})\nHeadlines:\n${headlines}`,
+        },
+      ],
+      max_tokens: 160,
+      temperature: 0.3,
+    });
+    const text = completion.choices[0]?.message?.content?.trim();
+    return text || null;
+  } catch (error) {
+    console.error("News TLDR generation failed", error);
+    return null;
+  }
 }

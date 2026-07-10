@@ -12,7 +12,7 @@ import {
   type PortfolioSummary,
   type SecurityDetail,
 } from "../stocks/domain";
-import { fetchCompanyNews } from "../stocks/news";
+import { fetchCompanyNews, summarizeNews } from "../stocks/news";
 import {
   ensureStocksTables,
   loadSession,
@@ -459,7 +459,8 @@ router.get("/securities/:id/news", async (req, res) => {
     try {
       const detail = await loadSecurityDetail(client, id);
       const items = await fetchCompanyNews(detail.name, detail.symbol);
-      const payload = { items };
+      const tldr = await summarizeNews(detail.name, detail.symbol, items);
+      const payload = { items, tldr };
       detailCacheSet(key, payload);
       res.json(payload);
     } catch (error) {

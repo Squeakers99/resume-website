@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { StocksHistorySeries } from "@/lib/server-api";
+import { formatDay } from "./formatDate";
 import styles from "./Stocks.module.css";
 
 const money = (n: number) =>
@@ -29,12 +30,6 @@ const monthTick = (d: unknown) =>
   new Date(`${String(d)}T00:00:00`)
     .toLocaleDateString("en-CA", { month: "short" })
     .toUpperCase();
-
-const dayLabel = (d: unknown) =>
-  new Date(`${String(d)}T00:00:00`)
-    .toLocaleDateString("en-CA", { day: "2-digit", month: "short", year: "2-digit" })
-    .toUpperCase()
-    .replace(/,/g, "");
 
 const dollarsTick = (v: number) => `$${Math.round(v).toLocaleString("en-CA")}`;
 
@@ -92,7 +87,7 @@ export default function PortfolioChart({ series }: { series: StocksHistorySeries
               />
               <Tooltip
                 formatter={(value) => money(Number(value))}
-                labelFormatter={dayLabel}
+                labelFormatter={(d) => formatDay(String(d))}
                 contentStyle={tooltipContentStyle}
                 itemStyle={{ color: "var(--text-main)", margin: 0 }}
                 labelStyle={{ color: "var(--text-muted)", margin: 0 }}

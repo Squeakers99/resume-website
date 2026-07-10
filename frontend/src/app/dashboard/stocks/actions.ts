@@ -86,14 +86,14 @@ export async function securityChartAction(
 }
 
 export type SecurityNewsResult =
-  | { ok: true; items: StocksNewsItem[] }
+  | { ok: true; items: StocksNewsItem[]; tldr: string | null }
   | { ok: false; error: string };
 
 export async function securityNewsAction(id: string): Promise<SecurityNewsResult> {
   try {
     await assertOwner();
-    const { items } = await getSecurityNews(id);
-    return { ok: true, items };
+    const { items, tldr } = await getSecurityNews(id);
+    return { ok: true, items, tldr };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }

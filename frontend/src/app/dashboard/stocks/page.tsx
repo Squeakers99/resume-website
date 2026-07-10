@@ -10,6 +10,7 @@ import {
 import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import AllocationDonut from "./AllocationDonut";
+import { formatDayFromDate } from "./formatDate";
 import ConnectCard from "./ConnectCard";
 import PortfolioChart from "./PortfolioChart";
 import PositionsSection from "./PositionsSection";
@@ -72,7 +73,7 @@ export default async function StocksPage() {
           {portfolio.stale && (
             <p className={styles.warningBanner} role="alert">
               Wealthsimple is unreachable — showing data from{" "}
-              {new Date(portfolio.fetchedAt).toLocaleString("en-CA")}.
+              {formatDayFromDate(new Date(portfolio.fetchedAt))}.
             </p>
           )}
 
