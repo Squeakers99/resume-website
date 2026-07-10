@@ -432,11 +432,11 @@ router.get("/securities/:id/chart", async (req, res) => {
     if (!SECURITY_ID_RE.test(id)) return res.status(400).json({ error: "Invalid security id" });
     const period = typeof req.query.period === "string" ? req.query.period : "ONE_MONTH";
     if (!CHART_PERIODS.has(period)) return res.status(400).json({ error: "Invalid period" });
+    const client = await getConnectedClient(res);
+    if (!client) return;
     const key = `chart:${id}:${period}`;
     const cached = detailCacheGet<{ points: unknown }>(key);
     if (cached) return res.json(cached);
-    const client = await getConnectedClient(res);
-    if (!client) return;
     try {
       const points = mapChartQuotes(await client.fetchSecurityChartRaw(id, period));
       const payload = { points };
@@ -455,11 +455,11 @@ router.get("/securities/:id/news", async (req, res) => {
   try {
     const id = req.params.id;
     if (!SECURITY_ID_RE.test(id)) return res.status(400).json({ error: "Invalid security id" });
+    const client = await getConnectedClient(res);
+    if (!client) return;
     const key = `news:${id}`;
     const cached = detailCacheGet<{ items: unknown }>(key);
     if (cached) return res.json(cached);
-    const client = await getConnectedClient(res);
-    if (!client) return;
     try {
       const detail = await loadSecurityDetail(client, id);
       const items = await fetchCompanyNews(detail.name, detail.symbol);

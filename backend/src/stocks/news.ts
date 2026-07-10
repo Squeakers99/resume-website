@@ -27,7 +27,7 @@ export async function fetchCompanyNews(
   const q = encodeURIComponent(`"${companyName}" OR "${symbol} stock"`);
   const res = await fetchImpl(
     `https://news.google.com/rss/search?q=${q}&hl=en-CA&gl=CA&ceid=CA:en`,
-    { headers: { "User-Agent": "Mozilla/5.0" } }
+    { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(10_000) }
   );
   if (!res.ok) throw new Error(`news fetch failed: ${res.status}`);
   const xml = await res.text();
@@ -43,7 +43,7 @@ export async function fetchCompanyNews(
     };
     const title = pick("title");
     const url = pick("link");
-    if (!title || !url) continue;
+    if (!title || !url || !/^https?:\/\//i.test(url)) continue;
     items.push({ title, url, source: pick("source"), publishedAt: pick("pubDate") });
   }
   return items;

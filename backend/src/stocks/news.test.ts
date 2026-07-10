@@ -5,6 +5,7 @@ const RSS = `<?xml version="1.0"?><rss><channel>
 <item><title><![CDATA[Apple hits record high]]></title><link>https://example.com/a</link><pubDate>Wed, 08 Jul 2026 12:00:00 GMT</pubDate><source url="https://example.com">Example News</source></item>
 <item><title>Apple &amp; suppliers rally</title><link>https://example.com/b</link></item>
 <item><title>no link, skipped</title></item>
+<item><title>bad scheme, skipped</title><link>javascript:alert(1)</link></item>
 </channel></rss>`;
 
 describe("fetchCompanyNews", () => {
