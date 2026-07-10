@@ -118,6 +118,19 @@ describe("WsClient.graphql", () => {
     ).rejects.toBeInstanceOf(WsApiError);
     expect(calls).toHaveLength(1);
   });
+
+  it("throws WsAuthError when the retried call is still Not Authorized after a successful refresh", async () => {
+    const { impl, calls } = fakeFetch([
+      () => jsonRes({ message: "Not Authorized." }, 401),
+      () => jsonRes({ access_token: "new-access", refresh_token: "new-refresh" }),
+      () => jsonRes({ message: "Not Authorized." }, 401),
+    ]);
+    const client = new WsClient(session(), async () => {}, impl);
+    await expect(
+      client.graphql("FetchAllAccountFinancials", {}, "identity.accounts.edges")
+    ).rejects.toBeInstanceOf(WsAuthError);
+    expect(calls).toHaveLength(3); // no second refresh attempt, no infinite loop
+  });
 });
 
 describe("WsClient.fetchPortfolioRaw", () => {

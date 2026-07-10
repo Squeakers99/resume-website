@@ -109,7 +109,16 @@ export class WsClient {
     } catch (error) {
       if (!(error instanceof WsNotAuthorizedError)) throw error;
       await this.refreshTokens();
-      return await fn();
+      try {
+        return await fn();
+      } catch (retryError) {
+        if (retryError instanceof WsNotAuthorizedError) {
+          throw new WsAuthError(
+            "Wealthsimple still rejects the access token after a refresh — run pnpm ws:login"
+          );
+        }
+        throw retryError;
+      }
     }
   }
 
