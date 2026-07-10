@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildSummary,
   mapAccounts,
+  mapChartQuotes,
   mapHistoryPoints,
   mapPositions,
+  mapSecurityDetail,
   WsShapeError,
 } from "./domain";
 
@@ -88,6 +90,7 @@ describe("mapPositions", () => {
     const positions = mapPositions([positionNode()]);
     expect(positions).toEqual([
       {
+        securityId: "sec-s-xeqt",
         symbol: "XEQT",
         name: "iShares Core Equity ETF",
         exchange: "TSX",
@@ -205,5 +208,79 @@ describe("TFSA account labels", () => {
       accountNode({ id: "t2", unifiedAccountType: "MANAGED_TFSA" }),
     ]);
     expect(accounts.map((a) => a.label)).toEqual(["Self TFSA", "Auto TFSA"]);
+  });
+});
+
+describe("mapSecurityDetail", () => {
+  const raw = {
+    id: "sec-s-xeqt",
+    managementExpenseRatio: 0.2,
+    stock: {
+      symbol: "XEQT",
+      name: "iShares Core Equity ETF",
+      primaryExchange: "TSX",
+      description: "An all-equity ETF.",
+      dividendFrequency: "quarterly",
+    },
+    fundamentals: {
+      currency: "CAD",
+      marketCap: 5000000000,
+      peRatio: "21.5",
+      eps: 1.23,
+      high52Week: 35.2,
+      low52Week: 27.1,
+      yield: 0.021,
+      beta: null,
+      avgVolume: 400000,
+      dailyVolume: "350000",
+      description: "Fundamentals description.",
+      companyCeo: null,
+      companyHqLocation: "Toronto, CA",
+      numberOfEmployees: null,
+    },
+  };
+
+  it("maps stock + fundamentals with numeric-string tolerance", () => {
+    const d = mapSecurityDetail(raw);
+    expect(d).toMatchObject({
+      securityId: "sec-s-xeqt",
+      symbol: "XEQT",
+      name: "iShares Core Equity ETF",
+      exchange: "TSX",
+      currency: "CAD",
+      peRatio: 21.5,
+      dailyVolume: 350000,
+      dividendYield: 0.021,
+      beta: null,
+      managementExpenseRatio: 0.2,
+      hqLocation: "Toronto, CA",
+      dividendFrequency: "quarterly",
+    });
+    expect(d.description).toBe("An all-equity ETF.");
+  });
+
+  it("tolerates missing stock/fundamentals but requires an id", () => {
+    const d = mapSecurityDetail({ id: "sec-x" });
+    expect(d.symbol).toBe("sec-x");
+    expect(d.marketCap).toBeNull();
+    expect(() => mapSecurityDetail({})).toThrow(WsShapeError);
+  });
+});
+
+describe("mapChartQuotes", () => {
+  it("maps, sorts by timestamp, and skips null-price bars", () => {
+    const points = mapChartQuotes([
+      { timestamp: "2026-07-09T15:00:00Z", price: "101.5" },
+      { timestamp: "2026-07-09T14:00:00Z", price: 100 },
+      { timestamp: "2026-07-09T16:00:00Z", price: null },
+    ]);
+    expect(points).toEqual([
+      { timestamp: "2026-07-09T14:00:00Z", price: 100 },
+      { timestamp: "2026-07-09T15:00:00Z", price: 101.5 },
+    ]);
+  });
+
+  it("throws on non-array input", () => {
+    expect(() => mapChartQuotes({})).toThrow(WsShapeError);
   });
 });

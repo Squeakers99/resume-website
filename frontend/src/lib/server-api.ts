@@ -303,6 +303,7 @@ export type StocksAccount = {
 };
 
 export type StocksPosition = {
+  securityId: string;
   symbol: string;
   name: string;
   exchange: string | null;
@@ -369,5 +370,64 @@ export type StocksHistory = {
 
 export async function getStocksHistory(): Promise<StocksHistory> {
   const res = await dashboardFetch("/stocks/history");
+  return res.json();
+}
+
+export type StocksSecurityDetail = {
+  securityId: string;
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  currency: string | null;
+  description: string | null;
+  ceo: string | null;
+  hqLocation: string | null;
+  employees: number | null;
+  marketCap: number | null;
+  peRatio: number | null;
+  eps: number | null;
+  high52Week: number | null;
+  low52Week: number | null;
+  dividendYield: number | null;
+  beta: number | null;
+  avgVolume: number | null;
+  dailyVolume: number | null;
+  managementExpenseRatio: number | null;
+  dividendFrequency: string | null;
+};
+
+export type StocksChartPeriod =
+  | "ONE_DAY"
+  | "ONE_MONTH"
+  | "THREE_MONTHS"
+  | "ONE_YEAR"
+  | "FIVE_YEARS";
+
+export type StocksChartPoint = { timestamp: string; price: number };
+
+export type StocksNewsItem = {
+  title: string;
+  url: string;
+  source: string | null;
+  publishedAt: string | null;
+};
+
+export async function getSecurityDetail(id: string): Promise<StocksSecurityDetail> {
+  const res = await dashboardFetch(`/stocks/securities/${encodeURIComponent(id)}`);
+  return res.json();
+}
+
+export async function getSecurityChart(
+  id: string,
+  period: StocksChartPeriod
+): Promise<{ points: StocksChartPoint[] }> {
+  const res = await dashboardFetch(
+    `/stocks/securities/${encodeURIComponent(id)}/chart?period=${period}`
+  );
+  return res.json();
+}
+
+export async function getSecurityNews(id: string): Promise<{ items: StocksNewsItem[] }> {
+  const res = await dashboardFetch(`/stocks/securities/${encodeURIComponent(id)}/news`);
   return res.json();
 }

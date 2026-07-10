@@ -2,7 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { getOwnerSession } from "@/lib/auth";
-import { startStocksConnect, submitStocksOtp } from "@/lib/server-api";
+import {
+  getSecurityChart,
+  getSecurityDetail,
+  getSecurityNews,
+  startStocksConnect,
+  submitStocksOtp,
+  type StocksChartPeriod,
+  type StocksChartPoint,
+  type StocksNewsItem,
+  type StocksSecurityDetail,
+} from "@/lib/server-api";
 
 // Server actions are public HTTP endpoints — every one of them must
 // re-verify the session, independently of the layout gate.
@@ -40,6 +50,50 @@ export async function submitOtpAction(code: string): Promise<ConnectActionResult
     const result = await submitStocksOtp(code);
     revalidatePath("/dashboard/stocks");
     return { ok: true, connected: result.connected };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export type SecurityDetailResult =
+  | { ok: true; detail: StocksSecurityDetail }
+  | { ok: false; error: string };
+
+export async function securityDetailAction(id: string): Promise<SecurityDetailResult> {
+  try {
+    await assertOwner();
+    return { ok: true, detail: await getSecurityDetail(id) };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export type SecurityChartResult =
+  | { ok: true; points: StocksChartPoint[] }
+  | { ok: false; error: string };
+
+export async function securityChartAction(
+  id: string,
+  period: StocksChartPeriod
+): Promise<SecurityChartResult> {
+  try {
+    await assertOwner();
+    const { points } = await getSecurityChart(id, period);
+    return { ok: true, points };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export type SecurityNewsResult =
+  | { ok: true; items: StocksNewsItem[] }
+  | { ok: false; error: string };
+
+export async function securityNewsAction(id: string): Promise<SecurityNewsResult> {
+  try {
+    await assertOwner();
+    const { items } = await getSecurityNews(id);
+    return { ok: true, items };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }

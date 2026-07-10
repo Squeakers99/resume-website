@@ -17,6 +17,7 @@ export type PortfolioAccount = {
 };
 
 export type PortfolioPosition = {
+  securityId: string;
   symbol: string;
   name: string;
   exchange: string | null;
@@ -144,6 +145,7 @@ export function mapPositions(nodes: unknown): PortfolioPosition[] {
       .filter((id): id is string => typeof id === "string");
 
     return {
+      securityId: security.id,
       symbol: typeof stock?.symbol === "string" ? stock.symbol : security.id,
       name: typeof stock?.name === "string" ? stock.name : security.id,
       exchange: typeof stock?.primaryExchange === "string" ? stock.primaryExchange : null,
@@ -195,4 +197,78 @@ export function mapHistoryPoints(nodes: unknown): HistoryPoint[] {
     };
   });
   return points.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+const OP_MARKET_DATA = "FetchSecurityMarketData";
+const OP_CHART = "FetchIntraDayChartQuotes";
+
+export type SecurityDetail = {
+  securityId: string;
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  currency: string | null;
+  description: string | null;
+  ceo: string | null;
+  hqLocation: string | null;
+  employees: number | null;
+  marketCap: number | null;
+  peRatio: number | null;
+  eps: number | null;
+  high52Week: number | null;
+  low52Week: number | null;
+  dividendYield: number | null;
+  beta: number | null;
+  avgVolume: number | null;
+  dailyVolume: number | null;
+  managementExpenseRatio: number | null;
+  dividendFrequency: string | null;
+};
+
+const optStr = (x: unknown): string | null =>
+  typeof x === "string" && x.trim() ? x : null;
+
+export function mapSecurityDetail(raw: unknown): SecurityDetail {
+  const n = obj(raw);
+  if (!n || typeof n.id !== "string") {
+    throw new WsShapeError(OP_MARKET_DATA, "security has no id");
+  }
+  const stock = obj(n.stock);
+  const f = obj(n.fundamentals);
+  return {
+    securityId: n.id,
+    symbol: optStr(stock?.symbol) ?? n.id,
+    name: optStr(stock?.name) ?? n.id,
+    exchange: optStr(stock?.primaryExchange),
+    currency: optStr(f?.currency),
+    description: optStr(stock?.description) ?? optStr(f?.description),
+    ceo: optStr(f?.companyCeo),
+    hqLocation: optStr(f?.companyHqLocation),
+    employees: asNumber(f?.numberOfEmployees),
+    marketCap: asNumber(f?.marketCap),
+    peRatio: asNumber(f?.peRatio),
+    eps: asNumber(f?.eps),
+    high52Week: asNumber(f?.high52Week),
+    low52Week: asNumber(f?.low52Week),
+    dividendYield: asNumber(f?.yield),
+    beta: asNumber(f?.beta),
+    avgVolume: asNumber(f?.avgVolume),
+    dailyVolume: asNumber(f?.dailyVolume),
+    managementExpenseRatio: asNumber(n.managementExpenseRatio),
+    dividendFrequency: optStr(stock?.dividendFrequency),
+  };
+}
+
+export type ChartPoint = { timestamp: string; price: number };
+
+export function mapChartQuotes(nodes: unknown): ChartPoint[] {
+  if (!Array.isArray(nodes)) throw new WsShapeError(OP_CHART, "chartBarQuotes is not an array");
+  const points: ChartPoint[] = [];
+  for (const node of nodes) {
+    const n = obj(node);
+    const price = asNumber(n?.price) ?? asNumber(n?.sessionPrice);
+    if (!n || typeof n.timestamp !== "string" || price === null) continue; // closed-market bars
+    points.push({ timestamp: n.timestamp, price });
+  }
+  return points.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }

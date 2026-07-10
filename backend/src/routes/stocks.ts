@@ -3,12 +3,16 @@ import { randomUUID } from "crypto";
 import {
   buildSummary,
   mapAccounts,
+  mapChartQuotes,
   mapHistoryPoints,
   mapPositions,
+  mapSecurityDetail,
   type PortfolioAccount,
   type PortfolioPosition,
   type PortfolioSummary,
+  type SecurityDetail,
 } from "../stocks/domain";
+import { fetchCompanyNews } from "../stocks/news";
 import {
   ensureStocksTables,
   loadSession,
@@ -37,6 +41,7 @@ type PortfolioPayload = {
   };
   accounts: Array<{ id: string; label: string; type: string; currency: string; value: number }>;
   positions: Array<{
+    securityId: string;
     symbol: string;
     name: string;
     exchange: string | null;
@@ -99,6 +104,7 @@ function toPayload(
     })),
     positions: positions
       .map((p) => ({
+        securityId: p.securityId,
         symbol: p.symbol,
         name: p.name,
         exchange: p.exchange,
@@ -339,6 +345,133 @@ router.get("/history", async (_req, res) => {
   } catch (error) {
     console.error("Stocks history route failed", error);
     res.status(500).json({ error: "Failed to load history" });
+  }
+});
+
+// ----- Per-security detail (modal) -----
+
+const SECURITY_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+const CHART_PERIODS = new Set(["ONE_DAY", "ONE_MONTH", "THREE_MONTHS", "ONE_YEAR", "FIVE_YEARS"]);
+const DETAIL_TTL_MS = 10 * 60 * 1000;
+const detailCache = new Map<string, { data: unknown; at: number }>();
+
+function detailCacheGet<T>(key: string): T | null {
+  const hit = detailCache.get(key);
+  if (!hit || Date.now() - hit.at > DETAIL_TTL_MS) return null;
+  return hit.data as T;
+}
+
+function detailCacheSet(key: string, data: unknown) {
+  if (detailCache.size > 200) detailCache.clear();
+  detailCache.set(key, { data, at: Date.now() });
+}
+
+// Shared guard for the per-security endpoints: 503s (and returns null) when
+// no usable session exists, otherwise hands back a ready client.
+async function getConnectedClient(res: import("express").Response): Promise<WsClient | null> {
+  await ensureStocksTables();
+  const row = await loadSession();
+  if (!row) {
+    res.status(503).json({
+      error: "Wealthsimple is not connected — run pnpm ws:login in backend/",
+      status: "never_connected",
+    });
+    return null;
+  }
+  if (row.status !== "connected") {
+    res.status(503).json({
+      error: "The Wealthsimple session expired — run pnpm ws:login in backend/",
+      status: "disconnected",
+    });
+    return null;
+  }
+  return new WsClient(row.session, saveSession);
+}
+
+async function handleSecurityError(res: import("express").Response, error: unknown, what: string) {
+  if (error instanceof WsAuthError) {
+    console.error("Wealthsimple session unrecoverable", error);
+    await markDisconnected();
+    return res.status(503).json({
+      error: "The Wealthsimple session expired — run pnpm ws:login in backend/",
+      status: "disconnected",
+    });
+  }
+  console.error(`Wealthsimple ${what} fetch failed`, error);
+  res.status(502).json({ error: `Couldn't fetch ${what} from Wealthsimple` });
+}
+
+async function loadSecurityDetail(client: WsClient, id: string): Promise<SecurityDetail> {
+  const cached = detailCacheGet<SecurityDetail>(`detail:${id}`);
+  if (cached) return cached;
+  const detail = mapSecurityDetail(await client.fetchSecurityMarketDataRaw(id));
+  detailCacheSet(`detail:${id}`, detail);
+  return detail;
+}
+
+router.get("/securities/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!SECURITY_ID_RE.test(id)) return res.status(400).json({ error: "Invalid security id" });
+    const client = await getConnectedClient(res);
+    if (!client) return;
+    try {
+      res.json(await loadSecurityDetail(client, id));
+    } catch (error) {
+      await handleSecurityError(res, error, "security details");
+    }
+  } catch (error) {
+    console.error("Security detail route failed", error);
+    res.status(500).json({ error: "Failed to load security details" });
+  }
+});
+
+router.get("/securities/:id/chart", async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!SECURITY_ID_RE.test(id)) return res.status(400).json({ error: "Invalid security id" });
+    const period = typeof req.query.period === "string" ? req.query.period : "ONE_MONTH";
+    if (!CHART_PERIODS.has(period)) return res.status(400).json({ error: "Invalid period" });
+    const key = `chart:${id}:${period}`;
+    const cached = detailCacheGet<{ points: unknown }>(key);
+    if (cached) return res.json(cached);
+    const client = await getConnectedClient(res);
+    if (!client) return;
+    try {
+      const points = mapChartQuotes(await client.fetchSecurityChartRaw(id, period));
+      const payload = { points };
+      detailCacheSet(key, payload);
+      res.json(payload);
+    } catch (error) {
+      await handleSecurityError(res, error, "price history");
+    }
+  } catch (error) {
+    console.error("Security chart route failed", error);
+    res.status(500).json({ error: "Failed to load price history" });
+  }
+});
+
+router.get("/securities/:id/news", async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!SECURITY_ID_RE.test(id)) return res.status(400).json({ error: "Invalid security id" });
+    const key = `news:${id}`;
+    const cached = detailCacheGet<{ items: unknown }>(key);
+    if (cached) return res.json(cached);
+    const client = await getConnectedClient(res);
+    if (!client) return;
+    try {
+      const detail = await loadSecurityDetail(client, id);
+      const items = await fetchCompanyNews(detail.name, detail.symbol);
+      const payload = { items };
+      detailCacheSet(key, payload);
+      res.json(payload);
+    } catch (error) {
+      await handleSecurityError(res, error, "news");
+    }
+  } catch (error) {
+    console.error("Security news route failed", error);
+    res.status(500).json({ error: "Failed to load news" });
   }
 });
 

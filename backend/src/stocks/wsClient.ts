@@ -287,6 +287,18 @@ export class WsClient {
     );
     return { accounts, positions, allTime, today };
   }
+
+  async fetchSecurityMarketDataRaw(securityId: string): Promise<unknown> {
+    return await this.graphql("FetchSecurityMarketData", { id: securityId }, "security");
+  }
+
+  async fetchSecurityChartRaw(securityId: string, period: string): Promise<unknown> {
+    return await this.graphql(
+      "FetchIntraDayChartQuotes",
+      { id: securityId, period, tradingSession: "OVERNIGHT" },
+      "security.chartBarQuotes"
+    );
+  }
 }
 
 // ----- One-time login (used only by scripts/ws-login.ts) -----
