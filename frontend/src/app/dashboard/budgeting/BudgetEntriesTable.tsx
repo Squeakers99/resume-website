@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import type { BudgetEntry } from "@/lib/server-api";
 import { BUDGET_CATEGORIES } from "./budgetCategories";
-import { formatDay } from "./formatDate";
+import { formatDay } from "@/lib/formatDate";
 import { recategorizeEntryAction, updateEntryAction } from "./actions";
 import RecurringModal from "./RecurringModal";
 import styles from "./Budgeting.module.css";

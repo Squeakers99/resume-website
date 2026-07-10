@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { BudgetStatement, BudgetUploadResult } from "@/lib/server-api";
 import { deleteStatementAction, uploadStatementAction } from "./actions";
-import { formatDay } from "./formatDate";
+import { formatDay } from "@/lib/formatDate";
 import ReviewStatementModal from "./ReviewStatementModal";
 import styles from "./Budgeting.module.css";
 

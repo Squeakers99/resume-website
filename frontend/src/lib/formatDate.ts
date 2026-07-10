@@ -1,3 +1,4 @@
+// Dashboard-wide date formatting: DD MON YY (e.g. "05 JUN 26").
 const MONTHS = [
   "JAN",
   "FEB",
@@ -13,7 +14,7 @@ const MONTHS = [
   "DEC",
 ] as const;
 
-// "2026-06-05" -> "05 JUN 26"
+// "2026-06-05..." -> "05 JUN 26"
 export function formatDay(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!m) return iso;
@@ -25,4 +26,12 @@ export function formatMonth(ym: string): string {
   const m = /^(\d{4})-(\d{2})/.exec(ym);
   if (!m) return ym;
   return `${MONTHS[Number(m[2]) - 1]} ${m[1].slice(2)}`;
+}
+
+// Date -> "09 JUL 26" (for values that aren't ISO strings, e.g. RFC dates)
+export function formatDayFromDate(d: Date): string {
+  if (Number.isNaN(d.getTime())) return "";
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${String(
+    d.getFullYear()
+  ).slice(2)}`;
 }

@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { StocksHistorySeries } from "@/lib/server-api";
-import { formatDay } from "./formatDate";
+import { formatDay } from "@/lib/formatDate";
 import styles from "./Stocks.module.css";
 
 const money = (n: number) =>

@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { formatMonth } from "./formatDate";
+import { formatMonth } from "@/lib/formatDate";
 import styles from "./Budgeting.module.css";
 
 type CategoryTotal = { category: string; total: number };

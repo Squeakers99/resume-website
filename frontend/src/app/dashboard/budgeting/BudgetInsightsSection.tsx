@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { BudgetInsights } from "@/lib/server-api";
-import { formatMonth } from "./formatDate";
+import { formatMonth } from "@/lib/formatDate";
 import { refreshInsightsAction } from "./actions";
 import styles from "./Budgeting.module.css";
 

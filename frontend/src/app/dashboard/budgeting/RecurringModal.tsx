@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { BudgetEntry } from "@/lib/server-api";
 import { detectRecurringAction, listRecurringAction } from "./actions";
-import { formatDay } from "./formatDate";
+import { formatDay } from "@/lib/formatDate";
 import styles from "./Budgeting.module.css";
 
 type Props = { onClose: () => void };

@@ -18,7 +18,7 @@ import type {
   StocksSecurityDetail,
 } from "@/lib/server-api";
 import { securityChartAction, securityDetailAction, securityNewsAction } from "./actions";
-import { formatDayFromDate } from "./formatDate";
+import { formatDayFromDate } from "@/lib/formatDate";
 import styles from "./Stocks.module.css";
 
 const PERIODS: Array<{ id: StocksChartPeriod; label: string }> = [

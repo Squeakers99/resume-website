@@ -12,7 +12,7 @@ import {
 import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import styles from "./Budgeting.module.css";
-import { formatDay } from "./formatDate";
+import { formatDay } from "@/lib/formatDate";
 import BudgetInsightsSection from "./BudgetInsightsSection";
 import BudgetUploadSection from "./BudgetUploadSection";
 import BudgetEntriesTable from "./BudgetEntriesTable";

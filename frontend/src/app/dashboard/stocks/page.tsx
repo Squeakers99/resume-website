@@ -10,7 +10,7 @@ import {
 import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import AllocationDonut from "./AllocationDonut";
-import { formatDayFromDate } from "./formatDate";
+import { formatDayFromDate } from "@/lib/formatDate";
 import ConnectCard from "./ConnectCard";
 import PortfolioChart from "./PortfolioChart";
 import PositionsSection from "./PositionsSection";
