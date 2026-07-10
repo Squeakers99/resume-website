@@ -63,7 +63,12 @@ export async function summarizeNews(
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const headlines = items
-      .map((i) => `- ${i.title}${i.source ? ` (${i.source})` : ""}`)
+      .map(
+        (i) =>
+          `- ${i.title}${i.source ? ` (${i.source}` : ""}${
+            i.publishedAt ? `${i.source ? ", " : " ("}${i.publishedAt.slice(0, 16)})` : i.source ? ")" : ""
+          }`
+      )
       .join("\n");
     const completion = await client.chat.completions.create({
       model: "gpt-4.1-nano",
@@ -71,14 +76,14 @@ export async function summarizeNews(
         {
           role: "system",
           content:
-            "You summarize stock-news headlines for a personal portfolio dashboard. Write a 2-3 sentence TLDR of the most important, market-relevant items only. Plain text, no markdown, no preamble.",
+            "You write the TLDR for the news panel on a stock's page in a personal portfolio dashboard. Summarize the important news AND the market trends they imply for this company, prioritizing the most recent day's items. 2-4 sentences, plain text, no markdown, no preamble. When a point comes from a specific article, reference it briefly by source name in parentheses.",
         },
         {
           role: "user",
-          content: `Company: ${companyName} (${symbol})\nHeadlines:\n${headlines}`,
+          content: `Company: ${companyName} (${symbol})\nHeadlines (with source and date):\n${headlines}`,
         },
       ],
-      max_tokens: 160,
+      max_tokens: 220,
       temperature: 0.3,
     });
     const text = completion.choices[0]?.message?.content?.trim();
