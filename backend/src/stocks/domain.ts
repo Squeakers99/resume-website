@@ -77,6 +77,8 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   CASH: "Cash",
   SELF_DIRECTED_TFSA: "Self TFSA",
   MANAGED_TFSA: "Auto TFSA",
+  // Live-verified 2026-07-09: WS's managed TFSA actually reports this type.
+  AUTOMATED_SELF_DIRECTED_TFSA: "Auto TFSA",
 };
 
 function accountLabel(unifiedType: string, nickname: unknown): string {

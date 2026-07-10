@@ -72,11 +72,6 @@ let historyCache: { payload: HistoryPayload; fetchedAt: number } | null = null;
 const dollars = (cents: number) => Math.round(cents) / 100;
 const optDollars = (cents: number | null) => (cents === null ? null : dollars(cents));
 
-// Day P&L = simpleReturns since today's date in the market's timezone.
-function torontoToday(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(new Date());
-}
-
 function torontoDateDaysAgo(days: number): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(
     new Date(Date.now() - days * 86_400_000)
@@ -243,7 +238,8 @@ router.get("/portfolio", async (_req, res) => {
 
     const client = new WsClient(row.session, saveSession);
     try {
-      const raw = await client.fetchPortfolioRaw(torontoToday());
+      // Day P&L references the previous Toronto day's close (see wsClient).
+      const raw = await client.fetchPortfolioRaw(torontoDateDaysAgo(1));
       const accounts = mapAccounts(raw.accounts);
       const positions = mapPositions(raw.positions);
       const summary = buildSummary(raw.allTime, raw.today);

@@ -206,8 +206,9 @@ describe("TFSA account labels", () => {
     const accounts = mapAccounts([
       accountNode({ id: "t1", unifiedAccountType: "SELF_DIRECTED_TFSA" }),
       accountNode({ id: "t2", unifiedAccountType: "MANAGED_TFSA" }),
+      accountNode({ id: "t3", unifiedAccountType: "AUTOMATED_SELF_DIRECTED_TFSA" }),
     ]);
-    expect(accounts.map((a) => a.label)).toEqual(["Self TFSA", "Auto TFSA"]);
+    expect(accounts.map((a) => a.label)).toEqual(["Self TFSA", "Auto TFSA", "Auto TFSA"]);
   });
 });
 

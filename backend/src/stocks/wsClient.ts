@@ -244,17 +244,20 @@ export class WsClient {
         currency: "CAD",
         startDate: startDateIso,
         first: 400,
-        accountIds: accountIds ?? [],
+        // Live-verified 2026-07-09: [] means "no accounts" to WS (empty
+        // series); null means "no filter" and returns the all-accounts total.
+        accountIds,
       },
       "identity.financials.historicalDaily.edges",
       { loadAllPages: true }
     );
   }
 
-  // The four raw payloads the /portfolio route needs. `todayIso` is today's
-  // date in America/Toronto (YYYY-MM-DD); simpleReturns since that date is
-  // the day P&L.
-  async fetchPortfolioRaw(todayIso: string): Promise<{
+  // The four raw payloads the /portfolio route needs. `dayPnlReferenceIso` is
+  // the PREVIOUS Toronto calendar day (YYYY-MM-DD): simpleReturns since that
+  // day's close is the 1-day P&L, matching the WS app (live-verified
+  // 2026-07-09 — referencing today reads 0 after market close).
+  async fetchPortfolioRaw(dayPnlReferenceIso: string): Promise<{
     accounts: unknown;
     positions: unknown;
     allTime: unknown;
@@ -282,7 +285,7 @@ export class WsClient {
     );
     const today = await this.graphql(
       "FetchIdentityCurrentFinancials",
-      { identityId, currency: "CAD", startDate: todayIso },
+      { identityId, currency: "CAD", startDate: dayPnlReferenceIso },
       "identity.financials.current"
     );
     return { accounts, positions, allTime, today };

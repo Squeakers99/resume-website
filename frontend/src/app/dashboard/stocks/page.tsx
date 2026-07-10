@@ -90,7 +90,7 @@ export default async function StocksPage() {
               <span className={`${styles.statValue} ${pnlClass(portfolio.summary.dayPnl)}`}>
                 {portfolio.summary.dayPnl === null ? "—" : signedMoney(portfolio.summary.dayPnl)}
               </span>
-              <span className={styles.statHint}>since market open (Toronto)</span>
+              <span className={styles.statHint}>1-day change</span>
             </div>
             <div className={styles.statTile}>
               <span className={styles.statLabel}>All-time P&amp;L</span>
