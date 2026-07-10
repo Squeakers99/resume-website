@@ -121,7 +121,11 @@ export default function PositionDetailModal({ position, onClose }: Props) {
 
   const stats: Array<{ label: string; value: string }> = detail
     ? [
-        { label: "Market cap", value: detail.marketCap === null ? "—" : compact(detail.marketCap) },
+        {
+          label: "Market cap",
+          // WS reports marketCap in millions (live-verified 2026-07-09).
+          value: detail.marketCap === null ? "—" : compact(detail.marketCap * 1_000_000),
+        },
         { label: "P/E", value: detail.peRatio === null ? "—" : detail.peRatio.toFixed(1) },
         { label: "EPS", value: detail.eps === null ? "—" : detail.eps.toFixed(2) },
         {
