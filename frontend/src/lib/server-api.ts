@@ -354,3 +354,20 @@ export async function submitStocksOtp(code: string): Promise<{ connected: boolea
   });
   return res.json();
 }
+
+export type StocksHistorySeries = {
+  id: string;
+  label: string;
+  points: Array<{ date: string; value: number }>;
+};
+
+export type StocksHistory = {
+  series: StocksHistorySeries[];
+  fetchedAt: string;
+  stale: boolean;
+};
+
+export async function getStocksHistory(): Promise<StocksHistory> {
+  const res = await dashboardFetch("/stocks/history");
+  return res.json();
+}

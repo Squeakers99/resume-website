@@ -1,7 +1,9 @@
 import { getBackendStatus } from "@/lib/api";
 import {
+  getStocksHistory,
   getStocksPortfolio,
   getStocksStatus,
+  type StocksHistory,
   type StocksPortfolio,
   type StocksStatus,
 } from "@/lib/server-api";
@@ -9,6 +11,7 @@ import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import AllocationDonut from "./AllocationDonut";
 import ConnectCard from "./ConnectCard";
+import PortfolioChart from "./PortfolioChart";
 import styles from "./Stocks.module.css";
 
 const money = (n: number, currency = "CAD") =>
@@ -30,12 +33,15 @@ export default async function StocksPage() {
 
   let status: StocksStatus = "disconnected";
   let portfolio: StocksPortfolio | null = null;
+  let history: StocksHistory | null = null;
   let fetchError: string | null = null;
   if (backendConnected) {
     status = await getStocksStatus().catch(() => "disconnected" as const);
     if (status === "connected") {
       try {
         portfolio = await getStocksPortfolio();
+        // Fetch history alongside the portfolio.
+        history = await getStocksHistory().catch(() => null);
       } catch (error) {
         fetchError = error instanceof Error ? error.message : "Couldn't fetch the portfolio";
       }
@@ -110,58 +116,61 @@ export default async function StocksPage() {
             ))}
           </section>
 
-          <div className={styles.lowerGrid}>
-            <section className={styles.card} aria-label="Positions">
-              <h2 className={styles.cardHeading}>Positions</h2>
-              {portfolio.positions.length === 0 ? (
-                <p className={styles.emptyText}>No open positions.</p>
-              ) : (
-                <div className={styles.tableWrap}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Symbol</th>
-                        <th className={styles.num}>Qty</th>
-                        <th className={styles.num}>Price</th>
-                        <th className={styles.num}>Value (CAD)</th>
-                        <th className={styles.num}>Day</th>
-                        <th className={styles.num}>Total return</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {portfolio.positions.map((p) => (
-                        <tr key={`${p.symbol}-${p.accountIds.join(",")}`}>
-                          <td className={styles.symbolCell}>
-                            {p.symbol}
-                            {p.exchange ? ` · ${p.exchange}` : ""}
-                            <span className={styles.positionName}>{p.name}</span>
-                          </td>
-                          <td className={styles.num}>{p.quantity.toLocaleString("en-CA")}</td>
-                          <td className={styles.num}>
-                            {p.price === null ? "—" : money(p.price, p.currency)}
-                          </td>
-                          <td className={styles.num}>{money(p.value)}</td>
-                          <td className={`${styles.num} ${pnlClass(p.dayChange)}`}>
-                            {p.dayChange === null ? "—" : signedMoney(p.dayChange, p.currency)}
-                          </td>
-                          <td className={`${styles.num} ${pnlClass(p.totalReturn)}`}>
-                            {p.totalReturn === null ? "—" : signedMoney(p.totalReturn)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
+          <div className={styles.chartsRow}>
             <section className={`${styles.card} ${styles.donutCard}`} aria-label="Allocation">
               <h2 className={styles.cardHeading}>Allocation</h2>
               <AllocationDonut
                 positions={portfolio.positions.map((p) => ({ symbol: p.symbol, value: p.value }))}
               />
             </section>
+            <section className={`${styles.card} ${styles.donutCard}`} aria-label="Portfolio over time">
+              <PortfolioChart series={history?.series ?? []} />
+            </section>
           </div>
+
+          <section className={styles.card} aria-label="Positions">
+            <h2 className={styles.cardHeading}>Positions</h2>
+            {portfolio.positions.length === 0 ? (
+              <p className={styles.emptyText}>No open positions.</p>
+            ) : (
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Symbol</th>
+                      <th className={styles.num}>Qty</th>
+                      <th className={styles.num}>Price</th>
+                      <th className={styles.num}>Value (CAD)</th>
+                      <th className={styles.num}>Day</th>
+                      <th className={styles.num}>Total return</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {portfolio.positions.map((p) => (
+                      <tr key={`${p.symbol}-${p.accountIds.join(",")}`}>
+                        <td className={styles.symbolCell}>
+                          {p.symbol}
+                          {p.exchange ? ` · ${p.exchange}` : ""}
+                          <span className={styles.positionName}>{p.name}</span>
+                        </td>
+                        <td className={styles.num}>{p.quantity.toLocaleString("en-CA")}</td>
+                        <td className={styles.num}>
+                          {p.price === null ? "—" : money(p.price, p.currency)}
+                        </td>
+                        <td className={styles.num}>{money(p.value)}</td>
+                        <td className={`${styles.num} ${pnlClass(p.dayChange)}`}>
+                          {p.dayChange === null ? "—" : signedMoney(p.dayChange, p.currency)}
+                        </td>
+                        <td className={`${styles.num} ${pnlClass(p.totalReturn)}`}>
+                          {p.totalReturn === null ? "—" : signedMoney(p.totalReturn)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </>
       )}
     </main>

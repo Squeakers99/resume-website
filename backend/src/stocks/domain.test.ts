@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildSummary,
   mapAccounts,
+  mapHistoryPoints,
   mapPositions,
   WsShapeError,
 } from "./domain";
@@ -168,5 +169,41 @@ describe("buildSummary", () => {
     expect(summary.totalPnlCents).toBeNull();
     expect(summary.dayPnlCents).toBeNull();
     expect(() => buildSummary({}, financials(100, null, null))).toThrow(WsShapeError);
+  });
+});
+
+describe("mapHistoryPoints", () => {
+  const node = (date: string, cents: number) => ({
+    date,
+    netLiquidationValueV2: { amount: cents / 100, cents, currency: "CAD" },
+  });
+
+  it("maps and sorts points by date ascending", () => {
+    expect(mapHistoryPoints([node("2026-07-02", 200), node("2026-07-01", 100)])).toEqual([
+      { date: "2026-07-01", valueCents: 100 },
+      { date: "2026-07-02", valueCents: 200 },
+    ]);
+  });
+
+  it("accepts string amounts without cents", () => {
+    expect(
+      mapHistoryPoints([{ date: "2026-07-01", netLiquidationValueV2: { amount: "12.34", currency: "CAD" } }])
+    ).toEqual([{ date: "2026-07-01", valueCents: 1234 }]);
+  });
+
+  it("throws WsShapeError on non-array input and malformed nodes", () => {
+    expect(() => mapHistoryPoints({})).toThrow(WsShapeError);
+    expect(() => mapHistoryPoints([{ date: "2026-07-01" }])).toThrow(WsShapeError);
+    expect(() => mapHistoryPoints([{ netLiquidationValueV2: { cents: 1 } }])).toThrow(WsShapeError);
+  });
+});
+
+describe("TFSA account labels", () => {
+  it("labels self-directed and managed TFSAs per the owner's naming", () => {
+    const accounts = mapAccounts([
+      accountNode({ id: "t1", unifiedAccountType: "SELF_DIRECTED_TFSA" }),
+      accountNode({ id: "t2", unifiedAccountType: "MANAGED_TFSA" }),
+    ]);
+    expect(accounts.map((a) => a.label)).toEqual(["Self TFSA", "Auto TFSA"]);
   });
 });

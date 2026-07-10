@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import {
   buildSummary,
   mapAccounts,
+  mapHistoryPoints,
   mapPositions,
   type PortfolioAccount,
   type PortfolioPosition,
@@ -55,12 +56,26 @@ type PortfolioPayload = {
 // hit Wealthsimple, and the last good payload doubles as a stale fallback.
 let cache: { payload: PortfolioPayload; fetchedAt: number } | null = null;
 
+type HistoryPayload = {
+  series: Array<{ id: string; label: string; points: Array<{ date: string; value: number }> }>;
+  fetchedAt: string;
+  stale: boolean;
+};
+
+let historyCache: { payload: HistoryPayload; fetchedAt: number } | null = null;
+
 const dollars = (cents: number) => Math.round(cents) / 100;
 const optDollars = (cents: number | null) => (cents === null ? null : dollars(cents));
 
 // Day P&L = simpleReturns since today's date in the market's timezone.
 function torontoToday(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(new Date());
+}
+
+function torontoDateDaysAgo(days: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(
+    new Date(Date.now() - days * 86_400_000)
+  );
 }
 
 function toPayload(
@@ -139,6 +154,7 @@ router.post("/connect/start", async (_req, res) => {
       pendingConnect = null;
       await saveSession(session);
       cache = null;
+      historyCache = null;
       return res.json({ otpRequired: false, connected: true });
     } catch (error) {
       if (error instanceof OtpRequiredError) {
@@ -183,6 +199,7 @@ router.post("/connect/otp", async (req, res) => {
       pendingConnect = null;
       await saveSession(session);
       cache = null;
+      historyCache = null;
       res.json({ connected: true });
     } catch {
       // Almost always a wrong/expired code; keep the pending state for a retry.
@@ -252,6 +269,76 @@ router.get("/portfolio", async (_req, res) => {
   } catch (error) {
     console.error("Stocks portfolio route failed", error);
     res.status(500).json({ error: "Failed to load portfolio" });
+  }
+});
+
+router.get("/history", async (_req, res) => {
+  try {
+    await ensureStocksTables();
+
+    if (historyCache && Date.now() - historyCache.fetchedAt < CACHE_TTL_MS) {
+      return res.json(historyCache.payload);
+    }
+
+    const row = await loadSession();
+    if (!row) {
+      return res.status(503).json({
+        error: "Wealthsimple is not connected — run pnpm ws:login in backend/",
+        status: "never_connected",
+      });
+    }
+    if (row.status !== "connected") {
+      return res.status(503).json({
+        error: "The Wealthsimple session expired — run pnpm ws:login in backend/",
+        status: "disconnected",
+      });
+    }
+
+    const client = new WsClient(row.session, saveSession);
+    try {
+      const startDate = torontoDateDaysAgo(365);
+      const accounts = mapAccounts(await client.fetchAccountsRaw());
+      const toSeriesPoints = (points: ReturnType<typeof mapHistoryPoints>) =>
+        points.map((p) => ({ date: p.date, value: dollars(p.valueCents) }));
+
+      const series = [
+        {
+          id: "all",
+          label: "All",
+          points: toSeriesPoints(mapHistoryPoints(await client.fetchHistoryRaw(null, startDate))),
+        },
+      ];
+      for (const account of accounts) {
+        series.push({
+          id: account.id,
+          label: account.label,
+          points: toSeriesPoints(
+            mapHistoryPoints(await client.fetchHistoryRaw([account.id], startDate))
+          ),
+        });
+      }
+
+      const payload: HistoryPayload = { series, fetchedAt: new Date().toISOString(), stale: false };
+      historyCache = { payload, fetchedAt: Date.now() };
+      res.json(payload);
+    } catch (error) {
+      if (error instanceof WsAuthError) {
+        console.error("Wealthsimple session unrecoverable", error);
+        await markDisconnected();
+        return res.status(503).json({
+          error: "The Wealthsimple session expired — run pnpm ws:login in backend/",
+          status: "disconnected",
+        });
+      }
+      console.error("Wealthsimple history fetch failed", error);
+      if (historyCache) {
+        return res.json({ ...historyCache.payload, stale: true });
+      }
+      res.status(502).json({ error: "Couldn't fetch portfolio history from Wealthsimple" });
+    }
+  } catch (error) {
+    console.error("Stocks history route failed", error);
+    res.status(500).json({ error: "Failed to load history" });
   }
 });
 

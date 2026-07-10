@@ -65,6 +65,7 @@ const optMoneyCents = (x: unknown, op: string, field: string): number | null =>
 const OP_ACCOUNTS = "FetchAllAccountFinancials";
 const OP_POSITIONS = "FetchIdentityPositions";
 const OP_FINANCIALS = "FetchIdentityCurrentFinancials";
+const OP_HISTORY = "FetchIdentityHistoricalFinancials";
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   TFSA: "TFSA",
@@ -73,6 +74,8 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   RESP: "RESP",
   LIRA: "LIRA",
   CASH: "Cash",
+  SELF_DIRECTED_TFSA: "Self TFSA",
+  MANAGED_TFSA: "Auto TFSA",
 };
 
 function accountLabel(unifiedType: string, nickname: unknown): string {
@@ -175,4 +178,21 @@ export function buildSummary(allTime: unknown, today: unknown): PortfolioSummary
       : null,
     totalPnlRate: atReturns && typeof atReturns.rate === "number" ? atReturns.rate : null,
   };
+}
+
+export type HistoryPoint = { date: string; valueCents: number };
+
+export function mapHistoryPoints(nodes: unknown): HistoryPoint[] {
+  if (!Array.isArray(nodes)) throw new WsShapeError(OP_HISTORY, "history is not an array");
+  const points = nodes.map((node, i) => {
+    const n = obj(node);
+    if (!n || typeof n.date !== "string") {
+      throw new WsShapeError(OP_HISTORY, `history[${i}].date missing`);
+    }
+    return {
+      date: n.date,
+      valueCents: moneyCents(n.netLiquidationValueV2, OP_HISTORY, `history[${i}].netLiquidationValueV2`),
+    };
+  });
+  return points.sort((a, b) => a.date.localeCompare(b.date));
 }

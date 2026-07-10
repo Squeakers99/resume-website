@@ -173,3 +173,27 @@ describe("WsClient.fetchPortfolioRaw", () => {
     expect(lastBody.variables.startDate).toBe("2026-07-09");
   });
 });
+
+describe("WsClient.fetchHistoryRaw", () => {
+  it("queries identity historical financials with accountIds and startDate", async () => {
+    const body = {
+      data: {
+        identity: {
+          financials: {
+            historicalDaily: {
+              pageInfo: { hasNextPage: false, endCursor: null },
+              edges: [{ node: { date: "2026-07-01" } }],
+            },
+          },
+        },
+      },
+    };
+    const { impl, calls } = fakeFetch([() => jsonRes(body)]);
+    const client = new WsClient(session(), async () => {}, impl);
+    const nodes = await client.fetchHistoryRaw(["acc-1"], "2025-07-09");
+    expect(nodes).toEqual([{ date: "2026-07-01" }]);
+    const sent = JSON.parse(String(calls[0].init?.body));
+    expect(sent.variables.accountIds).toEqual(["acc-1"]);
+    expect(sent.variables.startDate).toBe("2025-07-09");
+  });
+});

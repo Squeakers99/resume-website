@@ -224,6 +224,33 @@ export class WsClient {
     return info.identity_canonical_id as string;
   }
 
+  async fetchAccountsRaw(): Promise<unknown> {
+    const identityId = await this.identityId();
+    return await this.graphql(
+      "FetchAllAccountFinancials",
+      { pageSize: 25, identityId },
+      "identity.accounts.edges",
+      { loadAllPages: true }
+    );
+  }
+
+  // Daily identity-level history; accountIds null/[] means all accounts.
+  async fetchHistoryRaw(accountIds: string[] | null, startDateIso: string): Promise<unknown> {
+    const identityId = await this.identityId();
+    return await this.graphql(
+      "FetchIdentityHistoricalFinancials",
+      {
+        identityId,
+        currency: "CAD",
+        startDate: startDateIso,
+        first: 400,
+        accountIds: accountIds ?? [],
+      },
+      "identity.financials.historicalDaily.edges",
+      { loadAllPages: true }
+    );
+  }
+
   // The four raw payloads the /portfolio route needs. `todayIso` is today's
   // date in America/Toronto (YYYY-MM-DD); simpleReturns since that date is
   // the day P&L.
@@ -234,12 +261,7 @@ export class WsClient {
     today: unknown;
   }> {
     const identityId = await this.identityId();
-    const accounts = await this.graphql(
-      "FetchAllAccountFinancials",
-      { pageSize: 25, identityId },
-      "identity.accounts.edges",
-      { loadAllPages: true }
-    );
+    const accounts = await this.fetchAccountsRaw();
     const positions = await this.graphql(
       "FetchIdentityPositions",
       {
