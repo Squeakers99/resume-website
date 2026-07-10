@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import { WsApiError, WsAuthError, WsClient, type StoredSession } from "./wsClient";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { __resetRefreshCoordinationForTests, WsApiError, WsAuthError, WsClient, type StoredSession } from "./wsClient";
+
+beforeEach(() => {
+  __resetRefreshCoordinationForTests();
+});
 
 const session = (): StoredSession => ({
   client_id: "client123",
@@ -130,6 +134,52 @@ describe("WsClient.graphql", () => {
       client.graphql("FetchAllAccountFinancials", {}, "identity.accounts.edges")
     ).rejects.toBeInstanceOf(WsAuthError);
     expect(calls).toHaveLength(3); // no second refresh attempt, no infinite loop
+  });
+
+  it("coalesces concurrent refreshes: two parallel 401s trigger exactly one token refresh", async () => {
+    const { impl, calls } = fakeFetch([
+      () => jsonRes({ message: "Not Authorized." }, 401),
+      () => jsonRes({ message: "Not Authorized." }, 401),
+      () => jsonRes({ access_token: "new-access", refresh_token: "new-refresh" }),
+      () => jsonRes(accountsBody),
+      () => jsonRes(accountsBody),
+    ]);
+    const client = new WsClient(session(), async () => {}, impl);
+    const [a, b] = await Promise.all([
+      client.graphql("FetchAllAccountFinancials", {}, "identity.accounts.edges"),
+      client.graphql("FetchAllAccountFinancials", {}, "identity.accounts.edges"),
+    ]);
+    expect(a).toHaveLength(1);
+    expect(b).toHaveLength(1);
+    const refreshCalls = calls.filter((c) => String(JSON.parse(String(c.init?.body ?? "{}")).grant_type) === "refresh_token");
+    expect(refreshCalls).toHaveLength(1);
+  });
+
+  it("adopts a sibling's recent rotation instead of refreshing with a stale token", async () => {
+    // Client A refreshes and rotates the token.
+    const first = fakeFetch([
+      () => jsonRes({ message: "Not Authorized." }, 401),
+      () => jsonRes({ access_token: "new-access", refresh_token: "new-refresh" }),
+      () => jsonRes(accountsBody),
+    ]);
+    const clientA = new WsClient(session(), async () => {}, first.impl);
+    await clientA.graphql("FetchAllAccountFinancials", {}, "identity.accounts.edges");
+
+    // Client B still holds the OLD tokens (loaded from the DB before A persisted).
+    const second = fakeFetch([
+      () => jsonRes({ message: "Not Authorized." }, 401),
+      () => jsonRes(accountsBody),
+    ]);
+    const persisted: StoredSession[] = [];
+    const clientB = new WsClient(session(), async (s) => { persisted.push({ ...s }); }, second.impl);
+    const nodes = await clientB.graphql("FetchAllAccountFinancials", {}, "identity.accounts.edges");
+    expect(nodes).toHaveLength(1);
+    // B adopted the rotation without its own refresh HTTP call...
+    const refreshCalls = second.calls.filter((c) => String(JSON.parse(String(c.init?.body ?? "{}")).grant_type) === "refresh_token");
+    expect(refreshCalls).toHaveLength(0);
+    // ...and persisted the adopted tokens.
+    expect(persisted[0]?.access_token).toBe("new-access");
+    expect(persisted[0]?.refresh_token).toBe("new-refresh");
   });
 });
 

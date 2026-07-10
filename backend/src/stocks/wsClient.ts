@@ -60,6 +60,22 @@ function isNotAuthorizedBody(body: unknown): boolean {
   return firstError?.message === "Not Authorized.";
 }
 
+// Concurrent requests must share one refresh per refresh token: parallel 401s
+// (e.g. the detail modal fans out three calls) would otherwise race to rotate
+// the same token and brick the session. `recentRotations` additionally covers
+// the sequential case where a request loaded its session from the DB before a
+// sibling request rotated the token.
+type RotatedTokens = { accessToken: string; refreshToken: string };
+let inflightRefresh: { refreshToken: string; promise: Promise<RotatedTokens> } | null = null;
+const recentRotations = new Map<string, RotatedTokens>();
+const MAX_RECENT_ROTATIONS = 5;
+
+// Test-only: reset module-level refresh coordination between tests.
+export function __resetRefreshCoordinationForTests(): void {
+  inflightRefresh = null;
+  recentRotations.clear();
+}
+
 export class WsClient {
   constructor(
     private session: StoredSession,
@@ -77,6 +93,33 @@ export class WsClient {
   }
 
   private async refreshTokens(): Promise<void> {
+    const current = this.session.refresh_token;
+
+    const alreadyRotated = recentRotations.get(current);
+    if (alreadyRotated) {
+      this.session.access_token = alreadyRotated.accessToken;
+      this.session.refresh_token = alreadyRotated.refreshToken;
+      await this.persist(this.session);
+      return;
+    }
+
+    if (!inflightRefresh || inflightRefresh.refreshToken !== current) {
+      const promise = this.requestTokenRefresh(current).finally(() => {
+        if (inflightRefresh && inflightRefresh.refreshToken === current) {
+          inflightRefresh = null;
+        }
+      });
+      inflightRefresh = { refreshToken: current, promise };
+    }
+
+    const tokens = await inflightRefresh.promise;
+    this.session.access_token = tokens.accessToken;
+    this.session.refresh_token = tokens.refreshToken;
+    await this.persist(this.session);
+  }
+
+  // The actual HTTP refresh; only ever one in flight per refresh token.
+  private async requestTokenRefresh(refreshToken: string): Promise<RotatedTokens> {
     const res = await this.fetchImpl(`${OAUTH_BASE_URL}/token`, {
       method: "POST",
       // Deliberately no Authorization header on refresh (matches upstream).
@@ -87,7 +130,7 @@ export class WsClient {
       },
       body: JSON.stringify({
         grant_type: "refresh_token",
-        refresh_token: this.session.refresh_token,
+        refresh_token: refreshToken,
         client_id: this.session.client_id,
       }),
     });
@@ -97,9 +140,13 @@ export class WsClient {
         `Wealthsimple session cannot be refreshed (${(body && body.error) || res.status}) — run pnpm ws:login`
       );
     }
-    this.session.access_token = body.access_token;
-    this.session.refresh_token = body.refresh_token;
-    await this.persist(this.session);
+    const tokens = { accessToken: body.access_token, refreshToken: body.refresh_token };
+    recentRotations.set(refreshToken, tokens);
+    if (recentRotations.size > MAX_RECENT_ROTATIONS) {
+      const oldest = recentRotations.keys().next().value;
+      if (oldest !== undefined) recentRotations.delete(oldest);
+    }
+    return tokens;
   }
 
   // Run fn; on an access-token rejection refresh once, re-persist, retry once.
@@ -377,7 +424,11 @@ export async function loginWithPassword(opts: {
 
   if (body?.error === "invalid_grant" && !opts.otp) throw new OtpRequiredError();
   if (!body || body.error || typeof body.access_token !== "string" || typeof body.refresh_token !== "string") {
-    throw new Error(`Wealthsimple login failed: ${JSON.stringify(body)}`);
+    const reason =
+      body && typeof body.error === "string"
+        ? `${body.error}${typeof body.error_description === "string" ? `: ${body.error_description}` : ""}`
+        : `HTTP ${res.status}`;
+    throw new Error(`Wealthsimple login failed: ${reason}`);
   }
 
   return {
