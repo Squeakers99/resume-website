@@ -177,7 +177,10 @@ export default function PositionDetailModal({ position, onClose }: Props) {
               {position.symbol}
               {position.exchange ? ` · ${position.exchange}` : ""}
             </h2>
-            <p className={styles.emptyText}>{position.name}</p>
+            <p className={styles.emptyText}>
+              {position.name} · {position.quantity.toLocaleString("en-CA")} stock
+              {position.quantity === 1 ? "" : "s"}
+            </p>
           </div>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
             ×
@@ -255,10 +258,6 @@ export default function PositionDetailModal({ position, onClose }: Props) {
         <div className={styles.modalGrid}>
           <div className={styles.modalLeft}>
         <section className={styles.statRow} aria-label="Position">
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Quantity</span>
-            <span className={styles.statValue}>{position.quantity.toLocaleString("en-CA")}</span>
-          </div>
           <div className={styles.statTile}>
             <span className={styles.statLabel}>Price</span>
             <span className={styles.statValue}>
