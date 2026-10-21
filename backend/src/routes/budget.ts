@@ -14,7 +14,11 @@ import {
   type BudgetCategory,
   type ExtractedStatement,
 } from "../budget/domain";
-import { ExtractionError, extractStatementsFromText } from "../budget/extract";
+import {
+  ExtractionError,
+  extractStatementsDeterministic,
+  extractStatementsFromText,
+} from "../budget/extract";
 import {
   classifySubscriptions,
   generateInsights,
@@ -278,6 +282,13 @@ async function revalidateStatement(
 
 // ----- Upload -----
 
+// Problem lists joined into an error body or a log line are capped to the
+// first 5 entries.
+function capProblems(problems: string[], max = 5): string {
+  const shown = problems.slice(0, max).join("; ");
+  return problems.length > max ? `${shown}; and ${problems.length - max} more` : shown;
+}
+
 router.post("/statements", uploadPdf, async (req, res) => {
   try {
     await ensureBudgetTables();
@@ -308,8 +319,33 @@ router.post("/statements", uploadPdf, async (req, res) => {
     }
 
     let extracted;
+    // Deterministic path only: per-statement problems (pre-parse problems,
+    // categorize warnings, validation problems), with the document-level ones
+    // appended to the first statement.
+    let deterministicProblems: string[][] | null = null;
     try {
-      extracted = await extractStatementsFromText(text);
+      const deterministic = await extractStatementsDeterministic(text);
+      if (deterministic.layout !== "unknown" && deterministic.statements.length > 0) {
+        console.log(
+          `Statement extraction path: deterministic pre-parser (${deterministic.layout}), ${deterministic.statements.length} statement(s), ${deterministic.problems.length} problem(s)`
+        );
+        extracted = deterministic.statements;
+        deterministicProblems = deterministic.statements.map((_, i) => [
+          ...(deterministic.problemsByStatement[i] ?? []),
+          ...(i === 0 ? deterministic.documentProblems : []),
+        ]);
+      } else if (deterministic.layout !== "unknown") {
+        console.log(
+          `Statement extraction path: pre-parser recognised ${deterministic.layout} but produced no statements; falling back to LLM`
+        );
+        if (deterministic.problems.length > 0) {
+          console.warn(`Pre-parser problems: ${capProblems(deterministic.problems)}`);
+        }
+        extracted = await extractStatementsFromText(text);
+      } else {
+        console.log("Statement extraction path: LLM (layout not recognized by the pre-parser)");
+        extracted = await extractStatementsFromText(text);
+      }
     } catch (error) {
       console.error("Statement extraction failed", error);
       const message =
@@ -396,6 +432,10 @@ router.post("/statements", uploadPdf, async (req, res) => {
       for (let i = 0; i < extracted.length; i++) {
         const s = extracted[i];
         const validation = validations[i];
+        // Deterministic path: any pre-parse, categorize or validation problem
+        // marks the statement as a mismatch. LLM path: validation alone decides.
+        const validationStatus =
+          deterministicProblems && deterministicProblems[i].length > 0 ? "mismatch" : validation.status;
         const stmtRows = await tx.$queryRaw<StatementRow[]>`
           INSERT INTO budget_statements (
             source, account_type, document_id, origin, statement_date, period_start, period_end,
@@ -407,7 +447,7 @@ router.post("/statements", uploadPdf, async (req, res) => {
             ${s.periodStart}::date, ${s.periodEnd}::date,
             ${toCents(s.previousBalance)}, ${toCents(s.paymentsCredits)},
             ${toCents(s.purchasesTotal)}, ${toCents(s.totalBalance)},
-            ${validation.status}, ${validation.extractedPurchasesSumCents}
+            ${validationStatus}, ${validation.extractedPurchasesSumCents}
           )
           RETURNING *
         `;
@@ -457,7 +497,7 @@ router.post("/statements", uploadPdf, async (req, res) => {
       results: result.results.map((r, i) => ({
         statement: toStatement(r.statement),
         entries: r.entries.map(toEntry),
-        problems: validations[i].problems,
+        problems: deterministicProblems ? deterministicProblems[i] : validations[i].problems,
         skippedDuplicates: r.skippedDuplicates,
         learnedCategories: learnedCounts[i],
       })),

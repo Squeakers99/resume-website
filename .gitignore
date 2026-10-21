@@ -81,3 +81,5 @@ docs/superpowers/
 # Miscellaneous
 # ------------------------------
 bill-examples/
+# Budget pre-parser corpus (pdf-parse text of real statements, regenerate locally)
+backend/test-fixtures/budget/corpus/

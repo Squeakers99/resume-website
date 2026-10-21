@@ -8,6 +8,8 @@ import {
   type ExtractedEntry,
   type ExtractedStatement,
 } from "./domain";
+import { categorizeStatements, type CategorizeCaller } from "./categorize";
+import { preparseStatementText, type PreparseLayout } from "./preparse";
 
 export class ExtractionError extends Error {}
 
@@ -275,4 +277,74 @@ export async function extractStatementsFromText(text: string): Promise<Extracted
     console.error(`Fallback extraction via ${FALLBACK_MODEL} failed`, error);
     return first;
   }
+}
+
+// LLM-free extraction for layouts the pre-parser recognizes: preparse →
+// categorize (one batched call, stubbable) → printed-totals validation.
+// Unknown layouts return no statements so the caller can use the LLM path.
+// `problems` is the flat union; `problemsByStatement[i]` holds statement i's
+// pre-parse problems, categorize warnings and validation problems, and
+// `documentProblems` whatever cannot be tied to one statement.
+export type DeterministicExtraction = {
+  layout: PreparseLayout;
+  statements: ExtractedStatement[];
+  problems: string[];
+  problemsByStatement: string[][];
+  documentProblems: string[];
+};
+
+// Index of the statement a pre-parse problem names (it starts with the
+// statement's source), preferring the longest matching source; -1 if none.
+function statementNamedBy(problem: string, statements: ExtractedStatement[]): number {
+  let best = -1;
+  statements.forEach((s, i) => {
+    const named =
+      problem === s.source || problem.startsWith(`${s.source}:`) || problem.startsWith(`${s.source} `);
+    if (named && (best === -1 || s.source.length > statements[best].source.length)) best = i;
+  });
+  return best;
+}
+
+export async function extractStatementsDeterministic(
+  text: string,
+  deps: { caller?: CategorizeCaller } = {}
+): Promise<DeterministicExtraction> {
+  const pre = preparseStatementText(text);
+  if (pre.statements.length === 0 || pre.layout === "unknown") {
+    return {
+      layout: pre.layout,
+      statements: [],
+      problems: [...pre.problems],
+      problemsByStatement: [],
+      documentProblems: [...pre.problems],
+    };
+  }
+  const problems = [...pre.problems];
+  const problemsByStatement: string[][] = pre.statements.map(() => []);
+  const documentProblems: string[] = [];
+  for (const p of pre.problems) {
+    const owner = statementNamedBy(p, pre.statements);
+    if (owner === -1) documentProblems.push(p);
+    else problemsByStatement[owner].push(p);
+  }
+
+  const categorized = await categorizeStatements(pre.statements, deps);
+  problems.push(...categorized.warnings);
+  categorized.warningsByStatement.forEach((list, i) => problemsByStatement[i].push(...list));
+  documentProblems.push(...categorized.documentWarnings);
+
+  categorized.statements.forEach((s, i) => {
+    for (const p of validateStatement(s).problems) {
+      const line = `${s.source}: ${p}`;
+      problems.push(line);
+      problemsByStatement[i].push(line);
+    }
+  });
+  return {
+    layout: pre.layout,
+    statements: categorized.statements,
+    problems,
+    problemsByStatement,
+    documentProblems,
+  };
 }
