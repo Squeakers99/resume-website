@@ -10,6 +10,19 @@
   --loss: #e34948;
 }
 
+/* The layout's wrapper holds header, tabs and page; div.* outranks the
+   wrapper's own gap so tabs-to-content spacing comes from the token. */
+div.stocksLayout {
+  gap: var(--space-5);
+}
+
+/* Page body inside the layout wrapper (the stocks counterpart of budget's lowerGrid). */
+.stocksMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
 .warningBanner {
   margin: 0;
   padding: 0.6rem 1rem;

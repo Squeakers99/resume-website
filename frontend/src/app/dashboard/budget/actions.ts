@@ -56,7 +56,7 @@ export async function uploadStatementAction(
     fd.append("file", file, file.name);
     const result = await uploadBudgetStatement(fd);
 
-    revalidatePath("/dashboard/budgeting");
+    revalidatePath("/dashboard", "layout");
     return { ok: true, result };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -76,7 +76,7 @@ export async function recategorizeEntryAction(
   try {
     await assertOwner();
     await patchBudgetEntry(id, { category });
-    revalidatePath("/dashboard/budgeting");
+    revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -90,7 +90,7 @@ export async function updateEntryAction(
   try {
     await assertOwner();
     const result = await patchBudgetEntry(id, patch);
-    revalidatePath("/dashboard/budgeting");
+    revalidatePath("/dashboard", "layout");
     return {
       ok: true,
       statement: result.statement,
@@ -109,7 +109,7 @@ export async function updateStatementAction(
   try {
     await assertOwner();
     const result = await patchBudgetStatement(id, patch);
-    revalidatePath("/dashboard/budgeting");
+    revalidatePath("/dashboard", "layout");
     return { ok: true, statement: result.statement, problems: result.problems };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -122,7 +122,7 @@ export async function detectRecurringAction(): Promise<
   try {
     await assertOwner();
     const result = await detectRecurring();
-    revalidatePath("/dashboard/budgeting");
+    revalidatePath("/dashboard", "layout");
     return { ok: true, marked: result.marked };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -144,7 +144,7 @@ export async function refreshInsightsAction(): Promise<ActionResult> {
   try {
     await assertOwner();
     await refreshBudgetInsights();
-    revalidatePath("/dashboard/budgeting");
+    revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -166,7 +166,7 @@ export async function deleteStatementAction(id: string): Promise<ActionResult> {
   try {
     await assertOwner();
     await deleteBudgetStatement(id);
-    revalidatePath("/dashboard/budgeting");
+    revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

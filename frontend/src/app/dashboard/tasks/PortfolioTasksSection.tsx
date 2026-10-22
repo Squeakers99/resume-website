@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import type { DashboardTask } from "@/lib/server-api";
-import { addTaskAction, deleteTaskAction, moveTaskAction, type ActionResult } from "./actions";
-import styles from "./Dashboard.module.css";
+import { addTaskAction, deleteTaskAction, moveTaskAction, type ActionResult } from "../actions";
+import styles from "../Dashboard.module.css";
 
 const COLUMNS = [
   { id: "backlog", title: "BACKLOG" },

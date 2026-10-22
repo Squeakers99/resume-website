@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import MoreSheet from "./MoreSheet";
-import { MORE_ITEMS, PHONE_TABS, isActiveAt, type NavItem } from "./nav";
-import { useCurrentLocation } from "./useCurrentLocation";
+import { MORE_ITEMS, PHONE_TABS, isActive, type NavItem } from "./nav";
 import styles from "./Shell.module.css";
 
 type Props = {
@@ -13,9 +13,9 @@ type Props = {
 };
 
 export default function BottomTabBar({ email, signOutAction }: Props) {
-  const { pathname, hash } = useCurrentLocation();
+  const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
-  const moreActive = MORE_ITEMS.some((item) => isActiveAt(item, pathname, hash));
+  const moreActive = MORE_ITEMS.some((item) => isActive(item, pathname));
 
   return (
     <>
@@ -37,7 +37,7 @@ export default function BottomTabBar({ email, signOutAction }: Props) {
               </button>
             );
           }
-          const active = isActiveAt(tab as NavItem, pathname, hash);
+          const active = isActive(tab as NavItem, pathname);
           return (
             <Link
               key={tab.id}

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { FiLogOut } from "react-icons/fi";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import { Modal } from "@/app/components/ui";
-import { MORE_ITEMS, isActiveAt } from "./nav";
-import { useCurrentLocation } from "./useCurrentLocation";
+import { MORE_ITEMS, isActive } from "./nav";
 import styles from "./Shell.module.css";
 
 type Props = {
@@ -16,7 +16,7 @@ type Props = {
 };
 
 export default function MoreSheet({ open, onClose, email, signOutAction }: Props) {
-  const { pathname, hash } = useCurrentLocation();
+  const pathname = usePathname();
 
   return (
     <Modal open={open} onClose={onClose} title="More" variant="sheet">
@@ -25,7 +25,7 @@ export default function MoreSheet({ open, onClose, email, signOutAction }: Props
           <ul className={styles.moreList}>
             {MORE_ITEMS.map((item) => {
               const Icon = item.icon;
-              const active = isActiveAt(item, pathname, hash);
+              const active = isActive(item, pathname);
               return (
                 <li key={item.id}>
                   <Link

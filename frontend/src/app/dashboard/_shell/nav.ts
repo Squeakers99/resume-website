@@ -15,11 +15,11 @@ export type PhoneTab = Omit<NavItem, "href"> & { href?: string };
 
 export const DASHBOARD_NAV: NavItem[] = [
   { id: "overview", label: "Overview", href: "/dashboard", icon: FiGrid },
-  { id: "budget", label: "Budget", href: "/dashboard/budgeting", icon: FiPieChart },
+  { id: "budget", label: "Budget", href: "/dashboard/budget", icon: FiPieChart },
   { id: "stocks", label: "Stocks", href: "/dashboard/stocks", icon: FiTrendingUp },
-  { id: "projects", label: "Projects", href: "/dashboard#projects", icon: FiFolder },
-  { id: "tasks", label: "Tasks", href: "/dashboard#tasks", icon: FiCheckSquare },
-  { id: "calendar", label: "Calendar", href: "/dashboard#calendar", icon: FiCalendar },
+  { id: "projects", label: "Projects", href: "/dashboard/projects", icon: FiFolder },
+  { id: "tasks", label: "Tasks", href: "/dashboard/tasks", icon: FiCheckSquare },
+  { id: "calendar", label: "Calendar", href: "/dashboard/calendar", icon: FiCalendar },
 ];
 
 const byId = (id: string): NavItem => {
@@ -38,29 +38,28 @@ export const PHONE_TABS: PhoneTab[] = [
 
 export const MORE_ITEMS: NavItem[] = [byId("projects"), byId("calendar")];
 
-export const SUB_PAGES: Record<string, { label: string; href: string }[]> = {};
+export type SubPage = { href: string; label: string };
+
+export const BUDGET_TABS: SubPage[] = [
+  { href: "/dashboard/budget", label: "Overview" },
+  { href: "/dashboard/budget/transactions", label: "Transactions" },
+  { href: "/dashboard/budget/statements", label: "Statements" },
+  { href: "/dashboard/budget/insights", label: "Insights" },
+];
+
+export const STOCKS_TABS: SubPage[] = [
+  { href: "/dashboard/stocks", label: "Overview" },
+  { href: "/dashboard/stocks/positions", label: "Positions" },
+];
+
+export const SUB_PAGES: Record<string, SubPage[]> = {
+  "/dashboard/budget": BUDGET_TABS,
+  "/dashboard/stocks": STOCKS_TABS,
+};
 
 export function isActive(item: NavItem, pathname: string): boolean {
-  if (item.href.includes("#")) return false;
   if (item.href === "/dashboard") return pathname === "/dashboard";
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
-}
-
-const HASH_HREFS = DASHBOARD_NAV.filter((n) => n.href.includes("#")).map((n) =>
-  n.href.slice(n.href.indexOf("#")),
-);
-
-// Hash-aware active state. `/dashboard#x` items are active on /dashboard when
-// the hash is `#x`; Overview is active on /dashboard unless one of them is.
-export function isActiveAt(item: NavItem, pathname: string, hash: string): boolean {
-  const hashIndex = item.href.indexOf("#");
-  if (hashIndex >= 0) {
-    return pathname === item.href.slice(0, hashIndex) && hash === item.href.slice(hashIndex);
-  }
-  if (item.href === "/dashboard") {
-    return pathname === "/dashboard" && (hash === "" || !HASH_HREFS.includes(hash));
-  }
-  return isActive(item, pathname);
 }
 
 export function breadcrumbsFor(pathname: string): { label: string; href: string }[] {
@@ -72,9 +71,11 @@ export function breadcrumbsFor(pathname: string): { label: string; href: string 
   const top = DASHBOARD_NAV.find((n) => n.href !== "/dashboard" && isActive(n, pathname));
   if (!top) return crumbs;
   crumbs.push({ label: top.label, href: top.href });
-  const sub = (SUB_PAGES[top.href] ?? []).find(
-    (s) => pathname === s.href || pathname.startsWith(`${s.href}/`),
-  );
-  if (sub) crumbs.push(sub);
+  // Most specific match wins: the section's own Overview href is a prefix of
+  // every other sub-page href.
+  const sub = (SUB_PAGES[top.href] ?? [])
+    .filter((s) => pathname === s.href || pathname.startsWith(`${s.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+  if (sub) crumbs.push({ label: sub.label, href: sub.href });
   return crumbs;
 }

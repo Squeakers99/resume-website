@@ -858,3 +858,22 @@
   letter-spacing: 0.05em;
   color: var(--text-muted);
 }
+
+/* ----- Overview cards grid ----- */
+.overviewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.overviewLink {
+  font-size: 0.75rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.overviewLink:hover,
+.overviewLink:focus-visible {
+  text-decoration: underline;
+}

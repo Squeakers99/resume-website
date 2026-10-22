@@ -426,10 +426,6 @@
 }
 
 /* Hash targets on the overview page clear the top bar when scrolled to. */
-.hashTarget {
-  scroll-margin-top: 80px;
-}
-
 .moreAccount {
   display: flex;
   align-items: center;

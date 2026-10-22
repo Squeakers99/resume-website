@@ -1,20 +1,17 @@
-import { PageHeader } from "@/app/components/ui";
-import { getBackendConnected } from "@/lib/dashboard-cache";
 import {
-  getStocksHistory,
-  getStocksPortfolio,
-  getStocksStatus,
-  type StocksHistory,
-  type StocksPortfolio,
-  type StocksStatus,
-} from "@/lib/server-api";
-import dashStyles from "../Dashboard.module.css";
+  getBackendConnected,
+  getStocksHistoryCached,
+  getStocksPortfolioCached,
+  getStocksStatusCached,
+} from "@/lib/dashboard-cache";
+import type { StocksHistory, StocksPortfolio, StocksStatus } from "@/lib/server-api";
 import AllocationDonut from "./AllocationDonut";
 import { formatDayFromDate } from "@/lib/formatDate";
 import ConnectCard from "./ConnectCard";
 import PortfolioChart from "./PortfolioChart";
-import PositionsSection from "./PositionsSection";
 import styles from "./Stocks.module.css";
+
+export const metadata = { title: "Stocks" };
 
 const money = (n: number, currency = "CAD") =>
   n.toLocaleString("en-CA", { style: "currency", currency });
@@ -33,22 +30,16 @@ export default async function StocksPage() {
   let history: StocksHistory | null = null;
   let fetchError: string | null = null;
   if (backendConnected) {
-    status = await getStocksStatus().catch(() => "disconnected" as const);
+    status = await getStocksStatusCached();
     if (status === "connected") {
-      try {
-        portfolio = await getStocksPortfolio();
-        // Fetch history alongside the portfolio.
-        history = await getStocksHistory().catch(() => null);
-      } catch (error) {
-        fetchError = error instanceof Error ? error.message : "Couldn't fetch the portfolio";
-      }
+      ({ portfolio, error: fetchError } = await getStocksPortfolioCached());
+      // Fetch history alongside the portfolio.
+      if (portfolio) history = await getStocksHistoryCached();
     }
   }
 
   return (
-    <main className={`${dashStyles.wrapper} ${styles.stocksRoot}`}>
-      <PageHeader title="Stocks" />
-
+    <main className={`${styles.stocksRoot} ${styles.stocksMain}`}>
       {!portfolio ? (
         <ConnectCard
           headline="Wealthsimple not connected"
@@ -67,7 +58,7 @@ export default async function StocksPage() {
         <>
           {portfolio.stale && (
             <p className={styles.warningBanner} role="alert">
-              Wealthsimple is unreachable — showing data from{" "}
+              Wealthsimple is unreachable - showing data from{" "}
               {formatDayFromDate(new Date(portfolio.fetchedAt))}.
             </p>
           )}
@@ -124,8 +115,6 @@ export default async function StocksPage() {
               <PortfolioChart series={history?.series ?? []} />
             </section>
           </div>
-
-          <PositionsSection positions={portfolio.positions} />
         </>
       )}
     </main>

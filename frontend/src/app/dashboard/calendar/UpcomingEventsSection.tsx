@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type { GoogleCalendarEvent } from "@/lib/google-calendar";
-import { addEventAction, deleteEventAction, type ActionResult } from "./actions";
-import styles from "./Dashboard.module.css";
+import { addEventAction, deleteEventAction, type ActionResult } from "../actions";
+import styles from "../Dashboard.module.css";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [

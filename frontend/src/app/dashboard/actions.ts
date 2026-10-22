@@ -47,7 +47,7 @@ export async function addTaskAction(input: {
   try {
     await assertOwner();
     await createTask(input);
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (error) {
     return toResult(error);
@@ -58,7 +58,7 @@ export async function moveTaskAction(id: string, status: string): Promise<Action
   try {
     await assertOwner();
     await updateTaskStatus(id, status);
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (error) {
     return toResult(error);
@@ -69,7 +69,7 @@ export async function deleteTaskAction(id: string): Promise<ActionResult> {
   try {
     await assertOwner();
     await deleteTask(id);
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (error) {
     return toResult(error);
@@ -90,7 +90,7 @@ export async function addEventAction(input: {
       };
     }
     await createGoogleEvent(accessToken, input);
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (error) {
     return toResult(error);
@@ -108,7 +108,7 @@ export async function deleteEventAction(id: string): Promise<ActionResult> {
       };
     }
     await deleteGoogleEvent(accessToken, id);
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     return { ok: true };
   } catch (error) {
     return toResult(error);
@@ -160,7 +160,7 @@ export async function submitProjectAction(input: {
       )
     );
 
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     revalidatePath("/projects");
     return {
       ok: true,
@@ -203,7 +203,7 @@ export async function finalizeProjectImagesAction(
     update.secondaryImages = secondaryImages;
 
     await patchProjectImages(projectId, update);
-    revalidatePath("/dashboard");
+    revalidatePath("/dashboard", "layout");
     revalidatePath("/projects");
     return { ok: true };
   } catch (error) {

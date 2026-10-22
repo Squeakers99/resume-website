@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { finalizeProjectImagesAction, submitProjectAction } from "./actions";
-import styles from "./Dashboard.module.css";
+import { finalizeProjectImagesAction, submitProjectAction } from "../actions";
+import styles from "../Dashboard.module.css";
 
 type Status = { ok: boolean; message: string } | null;
 

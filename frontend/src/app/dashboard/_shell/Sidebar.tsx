@@ -2,10 +2,10 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { FiChevronLeft, FiChevronRight, FiDroplet, FiLogOut } from "react-icons/fi";
 import ThemeToggle from "@/app/components/ThemeToggle";
-import { DASHBOARD_NAV, isActiveAt } from "./nav";
-import { useCurrentLocation } from "./useCurrentLocation";
+import { DASHBOARD_NAV, isActive } from "./nav";
 import UserMenu from "./UserMenu";
 import styles from "./Shell.module.css";
 
@@ -45,7 +45,7 @@ type Props = {
 };
 
 export default function Sidebar({ email, signOutAction }: Props) {
-  const { pathname, hash } = useCurrentLocation();
+  const pathname = usePathname();
   // The server snapshot is always "expanded", so the first client render matches
   // the SSR markup; the stored value applies right after hydration.
   const collapsed = useSyncExternalStore(subscribe, readCollapsed, () => false);
@@ -71,7 +71,7 @@ export default function Sidebar({ email, signOutAction }: Props) {
       <nav aria-label="Dashboard navigation" className={styles.sidebarNav}>
         {DASHBOARD_NAV.map((item) => {
           const Icon = item.icon;
-          const active = isActiveAt(item, pathname, hash);
+          const active = isActive(item, pathname);
           return (
             <Link
               key={item.id}

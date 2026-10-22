@@ -1,68 +1,21 @@
-import { PageHeader } from "@/app/components/ui";
-import { getBackendConnected } from "@/lib/dashboard-cache";
-import {
-  getBudgetInsights,
-  getBudgetSummary,
-  listBudgetEntries,
-  listBudgetStatements,
-  type BudgetEntry,
-  type BudgetInsights,
-  type BudgetStatement,
-  type BudgetSummary,
-} from "@/lib/server-api";
-import dashStyles from "../Dashboard.module.css";
+import { EMPTY_BUDGET_SUMMARY, getBackendConnected, getBudgetSummaryCached } from "@/lib/dashboard-cache";
 import styles from "./Budgeting.module.css";
 import { formatDay } from "@/lib/formatDate";
-import BudgetInsightsSection from "./BudgetInsightsSection";
-import BudgetUploadSection from "./BudgetUploadSection";
-import BudgetEntriesTable from "./BudgetEntriesTable";
 import BudgetChartsSection from "./BudgetChartsSection";
+
+export const metadata = { title: "Budget" };
 
 const money = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 export default async function BudgetingPage() {
   const backendConnected = await getBackendConnected();
-
-  let summary: BudgetSummary = {
-    latestCard: null,
-    latestChequing: null,
-    latestSavings: null,
-    statementCount: 0,
-    categoryTotals: [],
-    cardBills: [],
-    monthlyByCategory: [],
-  };
-  let entries: BudgetEntry[] = [];
-  let statements: BudgetStatement[] = [];
-  let insights: BudgetInsights = {
-    projection: null,
-    projectionSource: "trend",
-    recommendations: null,
-    generatedAt: null,
-    stale: false,
-  };
-  if (backendConnected) {
-    [summary, entries, statements, insights] = await Promise.all([
-      getBudgetSummary().catch(() => summary),
-      listBudgetEntries().catch(() => [] as BudgetEntry[]),
-      listBudgetStatements().catch(() => [] as BudgetStatement[]),
-      getBudgetInsights().catch(() => insights),
-    ]);
-  }
+  const summary = backendConnected ? await getBudgetSummaryCached() : EMPTY_BUDGET_SUMMARY;
 
   const { latestCard, latestChequing, latestSavings } = summary;
 
   return (
-    <main className={dashStyles.wrapper}>
-      <PageHeader title="Budget" />
-
-      {statements.some((s) => s.validationStatus === "mismatch") && (
-        <p className={styles.warningBanner} role="alert">
-          Some statements failed totals validation — review or delete them below.
-        </p>
-      )}
-
+    <main className={styles.lowerGrid}>
       <section className={styles.statRow} aria-label="Current totals">
         <div className={styles.statTile}>
           <span className={styles.statLabel}>Current balance</span>
@@ -116,16 +69,6 @@ export default async function BudgetingPage() {
         monthlyByCategory={summary.monthlyByCategory}
         cardBills={summary.cardBills}
       />
-
-      <BudgetInsightsSection insights={insights} />
-
-      <div className={styles.lowerGrid}>
-        <BudgetUploadSection
-          statements={statements}
-          backendConnected={backendConnected}
-        />
-        <BudgetEntriesTable entries={entries} />
-      </div>
     </main>
   );
 }

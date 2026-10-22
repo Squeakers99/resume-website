@@ -37,7 +37,7 @@ export async function startConnectAction(): Promise<ConnectActionResult> {
   try {
     await assertOwner();
     const result = await startStocksConnect();
-    if (result.connected) revalidatePath("/dashboard/stocks");
+    if (result.connected) revalidatePath("/dashboard", "layout");
     return { ok: true, otpRequired: result.otpRequired, connected: result.connected };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -48,7 +48,7 @@ export async function submitOtpAction(code: string): Promise<ConnectActionResult
   try {
     await assertOwner();
     const result = await submitStocksOtp(code);
-    revalidatePath("/dashboard/stocks");
+    revalidatePath("/dashboard", "layout");
     return { ok: true, connected: result.connected };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
