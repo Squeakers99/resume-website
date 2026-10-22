@@ -14,6 +14,17 @@ app.use(cors({
 
 app.use(express.json());
 
+// [HTTP] one line per request: method, path, status, duration.
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  res.on("finish", () => {
+    console.log(
+      `[HTTP] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now() - startedAt}ms)`
+    );
+  });
+  next();
+});
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.use("/api/projects", projectsRouter);
@@ -21,4 +32,8 @@ app.use("/api/metrics", metricsRouter);
 app.use("/api/dashboard", requireDashboardKey, dashboardRouter);
 
 const port = Number(process.env.PORT) || 4000;
-app.listen(port, () => console.log(`API running on http://localhost:${port}`));
+app.listen(port, () =>
+  console.log(
+    `[SERVER] API running on http://localhost:${port} (env: ${process.env.NODE_ENV ?? "development"})`
+  )
+);
