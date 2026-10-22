@@ -1,14 +1,26 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import type { BudgetEntry } from "@/lib/server-api";
+import { Card, DataTable, type DataTableColumn } from "@/app/components/ui";
+import { formatMoney } from "@/lib/format";
+import type { BudgetAccountType, BudgetEntry, BudgetStatement } from "@/lib/server-api";
 import { BUDGET_CATEGORIES } from "./budgetCategories";
 import { formatDay } from "@/lib/formatDate";
 import { recategorizeEntryAction, updateEntryAction } from "./actions";
 import RecurringModal from "./RecurringModal";
 import styles from "./Budgeting.module.css";
 
-type Props = { entries: BudgetEntry[] };
+type Props = {
+  entries: BudgetEntry[];
+  /** Used only to label each entry's account; entries render without it. */
+  statements?: BudgetStatement[];
+};
+
+const ACCOUNT_LABELS: Record<BudgetAccountType, string> = {
+  credit_card: "Credit card",
+  chequing: "Chequing",
+  savings: "Savings",
+};
 
 type Filters = {
   search: string; // case-insensitive description match
@@ -29,10 +41,7 @@ const NO_FILTERS: Filters = {
 };
 const PAGE_SIZE = 15;
 
-const money = (n: number) =>
-  n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
-
-export default function BudgetEntriesTable({ entries }: Props) {
+export default function BudgetEntriesTable({ entries, statements }: Props) {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [panelOpen, setPanelOpen] = useState(false);
   const [recurringOpen, setRecurringOpen] = useState(false);
@@ -61,6 +70,15 @@ export default function BudgetEntriesTable({ entries }: Props) {
   const [nameOverrides, setNameOverrides] = useState<Record<string, string>>({});
 
   const displayName = (e: BudgetEntry) => nameOverrides[e.id] ?? e.description;
+
+  const statementsById = useMemo(
+    () => new Map((statements ?? []).map((s) => [s.id, s])),
+    [statements]
+  );
+  const accountLabel = (e: BudgetEntry) => {
+    const s = statementsById.get(e.statementId);
+    return s ? ACCOUNT_LABELS[s.accountType] ?? s.source : "—";
+  };
 
   const visible = useMemo(() => {
     const min = filters.min === "" ? null : Number(filters.min);
@@ -119,11 +137,86 @@ export default function BudgetEntriesTable({ entries }: Props) {
     });
   };
 
+  // No sortValue on these columns: the table only holds the current page, so a
+  // column sort would mislead. Pagination and filters stay here in the section.
+  const columns: DataTableColumn<BudgetEntry>[] = [
+    {
+      key: "date",
+      header: "Date",
+      cell: (e) => <span className={styles.nowrap}>{formatDay(e.transDate)}</span>,
+    },
+    {
+      key: "description",
+      header: "Description",
+      cell: (e) => (
+        <div className={styles.descCell}>
+          {editingId === e.id ? (
+            <input
+              type="text"
+              className={`${styles.select} ${styles.descInput}`}
+              value={draft}
+              autoFocus
+              onChange={(ev) => setDraft(ev.target.value)}
+              onBlur={() => commitNameEdit(e)}
+              onKeyDown={(ev) => {
+                if (ev.key === "Enter") ev.currentTarget.blur();
+                if (ev.key === "Escape") setEditingId(null);
+              }}
+              aria-label={`Rename ${e.description}`}
+            />
+          ) : (
+            <button
+              type="button"
+              className={styles.nameButton}
+              onClick={() => startNameEdit(e)}
+              title="Click to rename"
+            >
+              {displayName(e)}
+            </button>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "account",
+      header: "Account",
+      cell: (e) => <span className={styles.nowrap}>{accountLabel(e)}</span>,
+    },
+    {
+      key: "category",
+      header: "Category",
+      cell: (e) => (
+        <select
+          className={`${styles.select} ${styles.categoryPill}`}
+          value={e.category}
+          disabled={isPending}
+          onChange={(ev) => onCategoryChange(e.id, ev.target.value)}
+          aria-label={`Category for ${e.description}`}
+        >
+          {BUDGET_CATEGORIES.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      key: "amount",
+      header: "Amount",
+      align: "right",
+      cell: (e) => (
+        <span className={`${styles.nowrap} ${e.isCredit ? styles.creditAmount : ""}`}>
+          {formatMoney(e.amount)}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <section className={styles.card} aria-label="Transactions">
-      <div className={styles.tableHeader}>
-        <h2 className={styles.cardHeading}>Transactions</h2>
-        <span className={styles.statementActions}>
+    <Card
+      title="Transactions"
+      ariaLabel="Transactions"
+      actions={
+        <>
           <button
             type="button"
             className={styles.btn}
@@ -139,8 +232,9 @@ export default function BudgetEntriesTable({ entries }: Props) {
           >
             Filters{activeCount > 0 ? ` (${activeCount})` : ""}
           </button>
-        </span>
-      </div>
+        </>
+      }
+    >
 
       {panelOpen && (
         <div className={styles.filterPanel}>
@@ -229,70 +323,14 @@ export default function BudgetEntriesTable({ entries }: Props) {
       {visible.length === 0 ? (
         <p className={styles.mutedText}>No transactions.</p>
       ) : (
-        <div className={styles.tableScroll}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th className={styles.amountCol}>Amount</th>
-                <th>Category</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((e) => (
-                <tr key={e.id}>
-                  <td>{formatDay(e.transDate)}</td>
-                  <td className={styles.descCell}>
-                    {editingId === e.id ? (
-                      <input
-                        type="text"
-                        className={`${styles.select} ${styles.descInput}`}
-                        value={draft}
-                        autoFocus
-                        onChange={(ev) => setDraft(ev.target.value)}
-                        onBlur={() => commitNameEdit(e)}
-                        onKeyDown={(ev) => {
-                          if (ev.key === "Enter") ev.currentTarget.blur();
-                          if (ev.key === "Escape") setEditingId(null);
-                        }}
-                        aria-label={`Rename ${e.description}`}
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.nameButton}
-                        onClick={() => startNameEdit(e)}
-                        title="Click to rename"
-                      >
-                        {displayName(e)}
-                      </button>
-                    )}
-                  </td>
-                  <td
-                    className={`${styles.amountCol} ${
-                      e.isCredit ? styles.creditAmount : ""
-                    }`}
-                  >
-                    {money(e.amount)}
-                  </td>
-                  <td>
-                    <select
-                      className={styles.select}
-                      value={e.category}
-                      disabled={isPending}
-                      onChange={(ev) => onCategoryChange(e.id, ev.target.value)}
-                      aria-label={`Category for ${e.description}`}
-                    >
-                      {BUDGET_CATEGORIES.map((c) => (
-                        <option key={c}>{c}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className={styles.tableBox}>
+          <DataTable
+            columns={columns}
+            rows={pageRows}
+            rowKey={(e) => e.id}
+            caption="Transactions"
+            hideCaption
+          />
         </div>
       )}
 
@@ -328,6 +366,6 @@ export default function BudgetEntriesTable({ entries }: Props) {
           </span>
         </div>
       )}
-    </section>
+    </Card>
   );
 }

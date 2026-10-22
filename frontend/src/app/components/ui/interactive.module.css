@@ -103,6 +103,31 @@
   max-width: 100%;
 }
 
+/* Thin themed scrollbar shared by the Modal panel and the DataTable scroll box
+   (same shape as the stocks .newsList rule). */
+.panel,
+.tableWrap {
+  scrollbar-width: thin;
+  scrollbar-color: var(--card-edge) transparent;
+}
+
+.panel::-webkit-scrollbar,
+.tableWrap::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.panel::-webkit-scrollbar-track,
+.tableWrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel::-webkit-scrollbar-thumb,
+.tableWrap::-webkit-scrollbar-thumb {
+  background: var(--card-edge);
+  border-radius: 999px;
+}
+
 .tableWrap:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

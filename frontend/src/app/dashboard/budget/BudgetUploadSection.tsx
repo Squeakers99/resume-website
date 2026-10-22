@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { Banner, Card, Modal } from "@/app/components/ui";
 import type { BudgetStatement, BudgetUploadResult } from "@/lib/server-api";
 import { deleteStatementAction, uploadStatementAction } from "./actions";
 import { formatDay } from "@/lib/formatDate";
@@ -32,16 +33,6 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
 
   const shown = statements.slice(0, MAX_VISIBLE_STATEMENTS);
   const overflow = statements.length - shown.length;
-
-  useEffect(() => {
-    if (!showAll) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      // The review modal stacks on top and owns Escape while it is open.
-      if (e.key === "Escape" && !reviewing) setShowAll(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [showAll, reviewing]);
 
   // Sequential on purpose: the transaction dedupe checks the DB at insert
   // time, so parallel uploads of overlapping statements could race past it.
@@ -111,9 +102,7 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
   );
 
   return (
-    <section className={styles.card} aria-label="Upload statement">
-      <h2 className={styles.cardHeading}>Upload statement</h2>
-
+    <Card title="Upload statement" ariaLabel="Upload statement">
       <div
         className={`${styles.dropzone} ${dragOver ? styles.dropzoneActive : ""}`}
         onDragOver={(e) => {
@@ -166,9 +155,9 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
           {outcomes.map((o) => (
             <div key={o.filename}>
               {o.error ? (
-                <p className={styles.errorText}>
+                <Banner tone="error">
                   {o.filename}: {o.error}
-                </p>
+                </Banner>
               ) : (
                 <>
                   <p className={styles.uploadPreviewTitle}>
@@ -190,11 +179,15 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
                           <strong> — totals mismatch, review below</strong>
                         )}
                       </p>
-                      {r.problems.map((p) => (
-                        <p key={p} className={styles.errorText}>
-                          {p}
-                        </p>
-                      ))}
+                      {r.problems.length > 0 && (
+                        <Banner tone="warning">
+                          {r.problems.map((p) => (
+                            <p key={p} className={styles.bannerLine}>
+                              {p}
+                            </p>
+                          ))}
+                        </Banner>
+                      )}
                     </div>
                   ))}
                 </>
@@ -225,35 +218,14 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
         </>
       )}
 
-      {showAll && (
-        <div
-          className={styles.modalOverlay}
-          role="presentation"
-          onClick={() => setShowAll(false)}
-        >
-          <div
-            className={styles.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-label="All statements"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={styles.modalHeader}>
-              <h2 className={styles.cardHeading}>
-                All statements ({statements.length})
-              </h2>
-              <button
-                type="button"
-                className={styles.btn}
-                onClick={() => setShowAll(false)}
-              >
-                Close
-              </button>
-            </div>
-            <ul className={styles.statementList}>{statements.map(statementItem)}</ul>
-          </div>
-        </div>
-      )}
+      {/* The review modal stacks on top and owns Escape while it is open. */}
+      <Modal
+        open={showAll}
+        onClose={() => setShowAll(false)}
+        title={`All statements (${statements.length})`}
+      >
+        <ul className={styles.statementList}>{statements.map(statementItem)}</ul>
+      </Modal>
 
       {reviewing && (
         <ReviewStatementModal
@@ -261,6 +233,6 @@ export default function BudgetUploadSection({ statements, backendConnected }: Pr
           onClose={() => setReviewing(null)}
         />
       )}
-    </section>
+    </Card>
   );
 }

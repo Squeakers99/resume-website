@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { Banner, Modal } from "@/app/components/ui";
+import { formatMoney } from "@/lib/format";
 import type { BudgetEntry, BudgetStatement } from "@/lib/server-api";
 import { BUDGET_CATEGORIES } from "./budgetCategories";
 import {
@@ -14,9 +16,6 @@ type Props = {
   statement: BudgetStatement;
   onClose: () => void;
 };
-
-const money = (n: number) =>
-  n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 // Sum of ALL credits, settlement included — the owner's rule for the printed
 // "Payments and credits" figure.
@@ -73,14 +72,6 @@ export default function ReviewStatementModal({ statement, onClose }: Props) {
       cancelled = true;
     };
   }, [statement.id]);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   const applyResult = (res: {
     ok: boolean;
@@ -166,183 +157,167 @@ export default function ReviewStatementModal({ statement, onClose }: Props) {
   );
 
   return (
-    <div className={styles.modalOverlay} role="presentation" onClick={onClose}>
-      <div
-        className={styles.modal}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Review ${current.source} statement`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={styles.modalHeader}>
-          <div>
-            <h2 className={styles.cardHeading}>Review statement</h2>
-            <p className={styles.mutedText}>
-              {current.source} ·{" "}
-              <span
-                className={
-                  current.validationStatus === "mismatch"
-                    ? styles.errorText
-                    : styles.validText
-                }
-              >
-                {current.validationStatus}
-              </span>
-              {isPending ? " · saving…" : ""}
+    <Modal open onClose={onClose} title={`Review ${current.source} statement`}>
+      <p className={styles.mutedText}>
+        {current.source} ·{" "}
+        <span
+          className={
+            current.validationStatus === "mismatch"
+              ? styles.errorText
+              : styles.validText
+          }
+        >
+          {current.validationStatus}
+        </span>
+        {isPending ? " · saving…" : ""}
+      </p>
+
+      {error && (
+        <p className={styles.errorText} role="alert">
+          {error}
+        </p>
+      )}
+      {problems !== null && problems.length > 0 && (
+        <Banner tone="warning">
+          {problems.map((p) => (
+            <p key={p} className={styles.bannerLine}>
+              {p}
             </p>
-          </div>
-          <button type="button" className={styles.btn} onClick={onClose}>
-            Close
-          </button>
+          ))}
+        </Banner>
+      )}
+      {problems !== null && problems.length === 0 && (
+        <p className={styles.validText}>All totals reconcile.</p>
+      )}
+
+      {current.accountType === "credit_card" ? (
+        <div className={styles.filterPanel}>
+          {moneyField("Total balance", "totalBalance")}
+          {moneyField("Payments and credits", "paymentsCredits")}
+          {entries !== null && (
+            <p className={styles.mutedText}>
+              Computed total:{" "}
+              {formatMoney(cardTotalFromEntries(entries, current.previousBalance))} (charges −
+              credits; the {formatMoney(current.previousBalance)} settlement payment ignored) ·
+              Credits sum: {formatMoney(creditsSum(entries))} (should equal payments and
+              credits)
+            </p>
+          )}
         </div>
+      ) : (
+        <div className={styles.filterPanel}>
+          <label className={styles.filterField}>
+            <span className={styles.filterLabel}>Source</span>
+            <input
+              type="text"
+              className={styles.select}
+              defaultValue={current.source}
+              onBlur={(e) => {
+                if (e.target.value.trim()) saveStatementField("source", e.target.value.trim());
+              }}
+            />
+          </label>
+          {dateField("Statement date", "statementDate")}
+          {dateField("Period start", "periodStart")}
+          {dateField("Period end", "periodEnd")}
+          {moneyField("Opening balance", "previousBalance")}
+          {moneyField("Money in", "paymentsCredits")}
+          {moneyField("Money out", "purchasesTotal")}
+          {moneyField("Closing balance", "totalBalance")}
+        </div>
+      )}
 
-        {error && (
-          <p className={styles.errorText} role="alert">
-            {error}
-          </p>
-        )}
-        {problems !== null && problems.length > 0 && (
-          <div className={styles.uploadPreview}>
-            {problems.map((p) => (
-              <p key={p} className={styles.errorText}>
-                {p}
-              </p>
-            ))}
-          </div>
-        )}
-        {problems !== null && problems.length === 0 && (
-          <p className={styles.validText}>All totals reconcile.</p>
-        )}
-
-        {current.accountType === "credit_card" ? (
-          <div className={styles.filterPanel}>
-            {moneyField("Total balance", "totalBalance")}
-            {moneyField("Payments and credits", "paymentsCredits")}
-            {entries !== null && (
-              <p className={styles.mutedText}>
-                Computed total:{" "}
-                {money(cardTotalFromEntries(entries, current.previousBalance))} (charges −
-                credits; the {money(current.previousBalance)} settlement payment ignored) ·
-                Credits sum: {money(creditsSum(entries))} (should equal payments and
-                credits)
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className={styles.filterPanel}>
-            <label className={styles.filterField}>
-              <span className={styles.filterLabel}>Source</span>
-              <input
-                type="text"
-                className={styles.select}
-                defaultValue={current.source}
-                onBlur={(e) => {
-                  if (e.target.value.trim()) saveStatementField("source", e.target.value.trim());
-                }}
-              />
-            </label>
-            {dateField("Statement date", "statementDate")}
-            {dateField("Period start", "periodStart")}
-            {dateField("Period end", "periodEnd")}
-            {moneyField("Opening balance", "previousBalance")}
-            {moneyField("Money in", "paymentsCredits")}
-            {moneyField("Money out", "purchasesTotal")}
-            {moneyField("Closing balance", "totalBalance")}
-          </div>
-        )}
-
-        <h3 className={styles.cardSubheading}>Entries (including card payments)</h3>
-        {entries === null ? (
-          <p className={styles.mutedText}>Loading entries…</p>
-        ) : (
-          <div className={styles.tableScroll}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th className={styles.amountCol}>Amount</th>
-                  <th>Credit</th>
-                  <th>Category</th>
+      <h3 className={styles.cardSubheading}>Entries (including card payments)</h3>
+      {entries === null ? (
+        <p className={styles.mutedText}>Loading entries…</p>
+      ) : (
+        <div className={styles.tableScroll}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th className={styles.amountCol}>Amount</th>
+                <th>Credit</th>
+                <th>Category</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e) => (
+                <tr key={e.id}>
+                  <td>
+                    <input
+                      type="date"
+                      className={styles.select}
+                      defaultValue={e.transDate}
+                      onBlur={(ev) => {
+                        if (ev.target.value && ev.target.value !== e.transDate) {
+                          saveEntryField(e, { transDate: ev.target.value });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td className={styles.descCell}>
+                    <input
+                      type="text"
+                      className={`${styles.select} ${styles.descInput}`}
+                      defaultValue={e.description}
+                      onBlur={(ev) => {
+                        const v = ev.target.value.trim();
+                        if (v && v !== e.description) {
+                          saveEntryField(e, { description: v });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td className={styles.amountCol}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={`${styles.select} ${styles.amountInput}`}
+                      defaultValue={e.amount}
+                      onBlur={(ev) => {
+                        if (ev.target.value === "") return; // never save cleared as 0
+                        const v = Number(ev.target.value);
+                        if (Number.isFinite(v) && v >= 0 && v !== e.amount) {
+                          saveEntryField(e, { amount: v });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={e.isCredit}
+                      disabled={isPending}
+                      aria-label={`${e.description} is money in`}
+                      onChange={(ev) =>
+                        saveEntryField(e, { isCredit: ev.target.checked })
+                      }
+                    />
+                  </td>
+                  <td>
+                    <select
+                      className={styles.select}
+                      value={e.category}
+                      disabled={isPending}
+                      onChange={(ev) =>
+                        saveEntryField(e, { category: ev.target.value })
+                      }
+                      aria-label={`Category for ${e.description}`}
+                    >
+                      {BUDGET_CATEGORIES.map((c) => (
+                        <option key={c}>{c}</option>
+                      ))}
+                    </select>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {entries.map((e) => (
-                  <tr key={e.id}>
-                    <td>
-                      <input
-                        type="date"
-                        className={styles.select}
-                        defaultValue={e.transDate}
-                        onBlur={(ev) => {
-                          if (ev.target.value && ev.target.value !== e.transDate) {
-                            saveEntryField(e, { transDate: ev.target.value });
-                          }
-                        }}
-                      />
-                    </td>
-                    <td className={styles.descCell}>
-                      <input
-                        type="text"
-                        className={`${styles.select} ${styles.descInput}`}
-                        defaultValue={e.description}
-                        onBlur={(ev) => {
-                          const v = ev.target.value.trim();
-                          if (v && v !== e.description) {
-                            saveEntryField(e, { description: v });
-                          }
-                        }}
-                      />
-                    </td>
-                    <td className={styles.amountCol}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className={`${styles.select} ${styles.amountInput}`}
-                        defaultValue={e.amount}
-                        onBlur={(ev) => {
-                          if (ev.target.value === "") return; // never save cleared as 0
-                          const v = Number(ev.target.value);
-                          if (Number.isFinite(v) && v >= 0 && v !== e.amount) {
-                            saveEntryField(e, { amount: v });
-                          }
-                        }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={e.isCredit}
-                        disabled={isPending}
-                        aria-label={`${e.description} is money in`}
-                        onChange={(ev) =>
-                          saveEntryField(e, { isCredit: ev.target.checked })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <select
-                        className={styles.select}
-                        value={e.category}
-                        disabled={isPending}
-                        onChange={(ev) =>
-                          saveEntryField(e, { category: ev.target.value })
-                        }
-                        aria-label={`Category for ${e.description}`}
-                      >
-                        {BUDGET_CATEGORIES.map((c) => (
-                          <option key={c}>{c}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Modal>
   );
 }

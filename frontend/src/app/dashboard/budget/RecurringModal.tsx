@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { Modal } from "@/app/components/ui";
+import { formatMoney } from "@/lib/format";
 import type { BudgetEntry } from "@/lib/server-api";
 import { detectRecurringAction, listRecurringAction } from "./actions";
 import { formatDay } from "@/lib/formatDate";
 import styles from "./Budgeting.module.css";
 
 type Props = { onClose: () => void };
-
-const money = (n: number) =>
-  n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 const normalize = (description: string) =>
   description
@@ -32,11 +31,6 @@ export default function RecurringModal({ onClose }: Props) {
 
   useEffect(() => {
     load();
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
   const onDetect = () => {
@@ -76,63 +70,52 @@ export default function RecurringModal({ onClose }: Props) {
   }, [entries]);
 
   return (
-    <div className={styles.modalOverlay} role="presentation" onClick={onClose}>
-      <div
-        className={styles.modal}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Subscriptions"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={styles.modalHeader}>
-          <h2 className={styles.cardHeading}>Subscriptions</h2>
-          <span className={styles.statementActions}>
-            <button
-              type="button"
-              className={styles.btn}
-              disabled={isPending}
-              onClick={onDetect}
-            >
-              {isPending ? "Working…" : "Detect"}
-            </button>
-            <button type="button" className={styles.btn} onClick={onClose}>
-              Close
-            </button>
-          </span>
-        </div>
+    <Modal
+      open
+      onClose={onClose}
+      title="Subscriptions"
+      footer={
+        <button
+          type="button"
+          className={styles.btn}
+          disabled={isPending}
+          onClick={onDetect}
+        >
+          {isPending ? "Working…" : "Detect"}
+        </button>
+      }
+    >
+      {error && (
+        <p className={styles.errorText} role="alert">
+          {error}
+        </p>
+      )}
+      {status && <p className={styles.validText}>{status}</p>}
 
-        {error && (
-          <p className={styles.errorText} role="alert">
-            {error}
-          </p>
-        )}
-        {status && <p className={styles.validText}>{status}</p>}
-
-        {entries === null ? (
-          <p className={styles.mutedText}>Loading…</p>
-        ) : groups.length === 0 ? (
-          <p className={styles.mutedText}>No subscriptions marked yet — click Detect.</p>
-        ) : (
-          groups.map((g) => (
-            <div key={g.key}>
-              <h3 className={styles.cardSubheading}>
-                {g.key} · {g.months} month{g.months === 1 ? "" : "s"} ·{" "}
-                {money(g.total)} total
-              </h3>
-              <ul className={styles.projectionList}>
-                {g.entries.map((e) => (
-                  <li key={e.id} className={styles.projectionItem}>
-                    <span>
-                      {formatDay(e.transDate)} · {e.description} · {e.category}
-                    </span>
-                    <span className={styles.amountCol}>{money(e.amount)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+      {entries === null ? (
+        <p className={styles.mutedText}>Loading…</p>
+      ) : groups.length === 0 ? (
+        <p className={styles.mutedText}>No subscriptions marked yet — click Detect.</p>
+      ) : (
+        groups.map((g) => (
+          <div key={g.key}>
+            <h3 className={styles.cardSubheading}>
+              {g.key} · {g.months} month{g.months === 1 ? "" : "s"} ·{" "}
+              {formatMoney(g.total)} total
+            </h3>
+            <ul className={styles.projectionList}>
+              {g.entries.map((e) => (
+                <li key={e.id} className={styles.projectionItem}>
+                  <span>
+                    {formatDay(e.transDate)} · {e.description} · {e.category}
+                  </span>
+                  <span className={styles.amountCol}>{formatMoney(e.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      )}
+    </Modal>
   );
 }

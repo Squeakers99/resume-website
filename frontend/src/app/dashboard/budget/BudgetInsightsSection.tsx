@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Card } from "@/app/components/ui";
+import { formatDateTime, formatMoney } from "@/lib/format";
 import type { BudgetInsights } from "@/lib/server-api";
 import { formatMonth } from "@/lib/formatDate";
 import { refreshInsightsAction } from "./actions";
 import styles from "./Budgeting.module.css";
 
 type Props = { insights: BudgetInsights };
-
-const money = (n: number) =>
-  n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 export default function BudgetInsightsSection({ insights }: Props) {
   const [error, setError] = useState<string | null>(null);
@@ -28,8 +27,7 @@ export default function BudgetInsightsSection({ insights }: Props) {
 
   return (
     <section className={styles.insightsGrid} aria-label="Spending insights">
-      <div className={styles.card}>
-        <h2 className={styles.cardHeading}>Projected spending</h2>
+      <Card as="div" title="Projected spending">
         {projection ? (
           <>
             <p className={styles.mutedText}>
@@ -39,12 +37,12 @@ export default function BudgetInsightsSection({ insights }: Props) {
                 : `from a linear trend over your last ${projection.monthsUsed} months (generate insights for the AI model)`}
               :
             </p>
-            <p className={styles.statValue}>{money(projection.total)}</p>
+            <p className={styles.statValue}>{formatMoney(projection.total)}</p>
             <ul className={styles.projectionList}>
               {projection.byCategory.map((c) => (
                 <li key={c.category} className={styles.projectionItem}>
                   <span>{c.category}</span>
-                  <span className={styles.amountCol}>{money(c.projected)}</span>
+                  <span className={styles.amountCol}>{formatMoney(c.projected)}</span>
                 </li>
               ))}
             </ul>
@@ -57,11 +55,12 @@ export default function BudgetInsightsSection({ insights }: Props) {
             Predictions appear once at least two months of statements are on file.
           </p>
         )}
-      </div>
+      </Card>
 
-      <div className={styles.card}>
-        <div className={styles.tableHeader}>
-          <h2 className={styles.cardHeading}>Ways to cut spending</h2>
+      <Card
+        as="div"
+        title="Ways to cut spending"
+        actions={
           <button
             type="button"
             className={styles.btn}
@@ -74,8 +73,8 @@ export default function BudgetInsightsSection({ insights }: Props) {
                 ? "Refresh"
                 : "Generate"}
           </button>
-        </div>
-
+        }
+      >
         {error && (
           <p className={styles.errorText} role="alert">
             {error}
@@ -100,7 +99,7 @@ export default function BudgetInsightsSection({ insights }: Props) {
             </ul>
             {generatedAt && (
               <p className={styles.statHint}>
-                Generated {new Date(generatedAt).toLocaleString("en-CA")}
+                Generated {formatDateTime(generatedAt)}
               </p>
             )}
           </>
@@ -110,7 +109,7 @@ export default function BudgetInsightsSection({ insights }: Props) {
             to analyze.
           </p>
         )}
-      </div>
+      </Card>
     </section>
   );
 }

@@ -4,6 +4,7 @@ import {
   getStocksStatusCached,
 } from "@/lib/dashboard-cache";
 import type { StocksPortfolio, StocksStatus } from "@/lib/server-api";
+import { Banner } from "@/app/components/ui";
 import { formatDayFromDate } from "@/lib/formatDate";
 import ConnectCard from "../ConnectCard";
 import PositionsSection from "../PositionsSection";
@@ -25,7 +26,7 @@ export default async function StocksPositionsPage() {
   }
 
   return (
-    <main className={`${styles.stocksRoot} ${styles.stocksMain}`}>
+    <main className={styles.stocksMain}>
       {!portfolio ? (
         <ConnectCard
           headline="Wealthsimple not connected"
@@ -43,10 +44,10 @@ export default async function StocksPositionsPage() {
       ) : (
         <>
           {portfolio.stale && (
-            <p className={styles.warningBanner} role="alert">
+            <Banner tone="warning">
               Wealthsimple is unreachable - showing data from{" "}
               {formatDayFromDate(new Date(portfolio.fetchedAt))}.
-            </p>
+            </Banner>
           )}
           <PositionsSection positions={portfolio.positions} />
         </>

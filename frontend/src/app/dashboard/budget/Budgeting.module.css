@@ -1,41 +1,13 @@
 /* Budgeting dashboard — same developer-dashboard aesthetic as Dashboard.module.css */
 
-.warningBanner {
-  margin: 0;
-  padding: 0.6rem 1rem;
-  border: 1px solid color-mix(in srgb, #e5a50a 60%, var(--card-edge));
-  border-left-width: 3px;
-  border-radius: 10px;
-  background: color-mix(in srgb, #e5a50a 8%, var(--card));
-  color: var(--text-main);
-  font-size: 0.85rem;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-}
-
-.statRow {
+/* Row of StatTile primitives on the overview. */
+.tileGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
 }
 
-.statTile {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.9rem 1.1rem;
-  border: 1px solid var(--card-edge);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
-}
-
-.statLabel {
-  font-size: 0.65rem;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
+/* Projected total on the insights card (tiles themselves are the StatTile primitive). */
 .statValue {
   font-size: 1.4rem;
   font-weight: 600;
@@ -100,24 +72,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.1rem 1.25rem;
-  border: 1px solid var(--card-edge);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--card) 98%, var(--bg-1));
-}
-
-.cardHeading {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  color: var(--text-main);
 }
 
 .cardSubheading {
@@ -202,6 +156,11 @@
   color: var(--text-main);
 }
 
+/* One line per problem inside a Banner. */
+.bannerLine {
+  margin: 0;
+}
+
 .statementList {
   margin: 0;
   padding: 0;
@@ -239,13 +198,6 @@
   color: var(--text-main);
 }
 
-.tableHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
 .select {
   padding: 0.25rem 0.4rem;
   font-size: 0.75rem;
@@ -258,6 +210,16 @@
 
 .tableScroll {
   overflow-x: auto;
+}
+
+/* Keeps the transactions DataTable scrolling inside its card on narrow screens. */
+.tableBox {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nowrap {
+  white-space: nowrap;
 }
 
 .table {
@@ -318,44 +280,7 @@
   flex: 0 0 auto;
 }
 
-/* ----- Review modal ----- */
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.55);
-}
-
-.modal {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  width: min(920px, 100%);
-  max-height: min(85vh, 900px);
-  overflow-y: auto;
-  padding: 1.25rem 1.5rem;
-  border: 1px solid var(--card-edge);
-  border-radius: 12px;
-  background: var(--card);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
-}
-
-/* Expanded chart modal: wider than the review modal, chart fills it. */
-.chartModal {
-  width: min(1200px, 100%);
-}
-
-.modalHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
+/* ----- Inline-edit inputs (review modal, transactions table) ----- */
 .descInput {
   width: 100%;
   min-width: 220px;
@@ -386,6 +311,13 @@
 .amountInput {
   width: 110px;
   text-align: right;
+}
+
+/* Category select drawn as a chip in the transactions table. */
+.categoryPill {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 90%, var(--bg-1));
 }
 
 /* ----- Transactions filter panel ----- */
@@ -468,43 +400,28 @@
   min-width: 0;
 }
 
-/* ----- Scrollbars: thin, theme-colored, rounded ----- */
+/* Thin themed scrollbar (same shape as the stocks .newsList rule). */
 .chartScroll,
-.tableScroll,
-.modal,
 .statementList {
   scrollbar-width: thin;
   scrollbar-color: var(--card-edge) transparent;
 }
 
 .chartScroll::-webkit-scrollbar,
-.tableScroll::-webkit-scrollbar,
-.modal::-webkit-scrollbar,
 .statementList::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .chartScroll::-webkit-scrollbar-track,
-.tableScroll::-webkit-scrollbar-track,
-.modal::-webkit-scrollbar-track,
 .statementList::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .chartScroll::-webkit-scrollbar-thumb,
-.tableScroll::-webkit-scrollbar-thumb,
-.modal::-webkit-scrollbar-thumb,
 .statementList::-webkit-scrollbar-thumb {
   background: var(--card-edge);
   border-radius: 999px;
-}
-
-.chartScroll::-webkit-scrollbar-thumb:hover,
-.tableScroll::-webkit-scrollbar-thumb:hover,
-.modal::-webkit-scrollbar-thumb:hover,
-.statementList::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
 }
 
 /* Shared legend spanning the charts grid — one legend for all charts. */
@@ -533,4 +450,66 @@
   height: 10px;
   border-radius: 3px;
   flex: 0 0 auto;
+}
+
+/* ----- Responsive ----- */
+/* Tablet: every two-column grid collapses to a single column. */
+@media (max-width: 1023.98px) {
+  .chartsGrid,
+  .insightsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Phone: tiles 2x2, filters stack, legends wrap, tighter padding. */
+@media (max-width: 639.98px) {
+  .lowerGrid,
+  .chartsGrid,
+  .insightsGrid {
+    gap: 1rem;
+  }
+
+  .tileGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .filterPanel {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.6rem;
+  }
+
+  .filterField .select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .chartLegend {
+    gap: 0.3rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .chartLegendItem {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .dropzone {
+    padding: 1rem 0.75rem;
+  }
+
+  .statementItem,
+  .statementListFooter,
+  .pageFooter {
+    flex-wrap: wrap;
+  }
+
+  .descCell {
+    max-width: 220px;
+  }
+
+  .descInput {
+    min-width: 160px;
+  }
 }

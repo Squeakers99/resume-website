@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -15,6 +15,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Card, Modal } from "@/app/components/ui";
+import { formatMoney, formatNumber } from "@/lib/format";
 import { formatMonth } from "@/lib/formatDate";
 import styles from "./Budgeting.module.css";
 
@@ -100,14 +102,12 @@ function MonthTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
   if (!hoveredMonth || String(label) !== hoveredMonth) return null;
-  const money = (n: number) =>
-    n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
   return (
     <div style={tooltipContentStyle}>
       <p style={tooltipLabelStyle}>{formatMonth(String(label))}</p>
       {payload.map((p) => (
         <p key={String(p.dataKey)} style={tooltipItemStyle}>
-          {String(p.dataKey)}: {money(Number(p.value))}
+          {String(p.dataKey)}: {formatMoney(Number(p.value))}
         </p>
       ))}
     </div>
@@ -126,17 +126,15 @@ function BillTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
   const row = payload[0].payload;
-  const money = (n: number) =>
-    n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
   return (
     <div style={tooltipContentStyle}>
       <p style={tooltipLabelStyle}>{formatMonth(String(label ?? row.month))}</p>
-      <p style={tooltipItemStyle}>Bill total: {money(row.total)}</p>
+      <p style={tooltipItemStyle}>Bill total: {formatMoney(row.total)}</p>
       <p style={tooltipItemStyle}>
-        Chequing: {row.chequing === null ? "—" : money(row.chequing)}
+        Chequing: {row.chequing === null ? "—" : formatMoney(row.chequing)}
       </p>
       <p style={tooltipItemStyle}>
-        Savings: {row.savings === null ? "—" : money(row.savings)}
+        Savings: {row.savings === null ? "—" : formatMoney(row.savings)}
       </p>
     </div>
   );
@@ -158,9 +156,6 @@ const SERIES_VARS = [
   "var(--series-8)",
 ];
 const MAX_CHART_SLOTS = SERIES_VARS.length;
-
-const money = (n: number) =>
-  n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 // Chart-display-only grouping: keep the top MAX_CHART_SLOTS categories by
 // all-time total, fold everything else into "Other". This mapping is
@@ -239,15 +234,6 @@ export default function BudgetChartsSection({
   // Hovered month on the stacked bar: that whole bar stays at full strength.
   const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!expanded) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setExpanded(null);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [expanded]);
-
   const donutData = useMemo(() => {
     if (effectiveMonth === "all") return foldRows(categoryTotals);
     return foldRows(monthlyByCategory.filter((m) => m.month === effectiveMonth));
@@ -264,12 +250,11 @@ export default function BudgetChartsSection({
 
   if (categoryTotals.length === 0) {
     return (
-      <section className={styles.card} aria-label="Spending charts">
-        <h2 className={styles.cardHeading}>Spending</h2>
+      <Card title="Spending" ariaLabel="Spending charts">
         <p className={styles.mutedText}>
           Charts appear after your first statement upload.
         </p>
-      </section>
+      </Card>
     );
   }
 
@@ -308,7 +293,8 @@ export default function BudgetChartsSection({
       : [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * max * 100) / 100);
 
   const TIME_MARGIN = { top: 5, right: 12, bottom: 5, left: 0 };
-  const dollars = (v: number) => `$${v.toLocaleString("en-CA")}`;
+  // formatNumber keeps the axis's 0-3 decimals ("$312.5"); formatMoney would not.
+  const dollars = (v: number) => `$${formatNumber(v)}`;
 
   // Pinned left pane: renders only the value axis, on the same scale. The
   // dummy invisible Line forces recharts to lay out the axis.
@@ -457,9 +443,10 @@ export default function BudgetChartsSection({
         ))}
       </div>
 
-      <div className={styles.card}>
-        <div className={styles.tableHeader}>
-          <h2 className={styles.cardHeading}>Spending by category</h2>
+      <Card
+        as="div"
+        title="Spending by category"
+        actions={
           <select
             className={styles.select}
             value={effectiveMonth}
@@ -473,7 +460,8 @@ export default function BudgetChartsSection({
               </option>
             ))}
           </select>
-        </div>
+        }
+      >
         <div className={styles.chartBox}>
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
@@ -494,7 +482,7 @@ export default function BudgetChartsSection({
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value) => money(Number(value))}
+                formatter={(value) => formatMoney(Number(value))}
                 contentStyle={tooltipContentStyle}
                 itemStyle={tooltipItemStyle}
                 labelStyle={tooltipLabelStyle}
@@ -502,11 +490,12 @@ export default function BudgetChartsSection({
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </Card>
 
-      <div className={styles.card}>
-        <div className={styles.tableHeader}>
-          <h2 className={styles.cardHeading}>Monthly spending</h2>
+      <Card
+        as="div"
+        title="Monthly spending"
+        actions={
           <button
             type="button"
             className={styles.btn}
@@ -515,7 +504,8 @@ export default function BudgetChartsSection({
           >
             ⤢ Expand
           </button>
-        </div>
+        }
+      >
         <div className={styles.stickyChart}>
           {stickyYAxis(barMax)}
           <div className={styles.chartScroll}>
@@ -529,13 +519,14 @@ export default function BudgetChartsSection({
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {cardBills.length > 0 && (
-        <div className={styles.card}>
-          <div className={styles.tableHeader}>
-            {/* Single series: the title names it, so no legend (dataviz rule). */}
-            <h2 className={styles.cardHeading}>Card bills by month</h2>
+        // Single series: the title names it, so no legend (dataviz rule).
+        <Card
+          as="div"
+          title="Card bills by month"
+          actions={
             <button
               type="button"
               className={styles.btn}
@@ -544,7 +535,8 @@ export default function BudgetChartsSection({
             >
               ⤢ Expand
             </button>
-          </div>
+          }
+        >
           <div className={styles.stickyChart}>
             {stickyYAxis(lineMax)}
             <div className={styles.chartScroll}>
@@ -558,40 +550,18 @@ export default function BudgetChartsSection({
               </div>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
-      {expanded && (
-        <div
-          className={styles.modalOverlay}
-          role="presentation"
-          onClick={() => setExpanded(null)}
-        >
-          <div
-            className={`${styles.modal} ${styles.chartModal}`}
-            role="dialog"
-            aria-modal="true"
-            aria-label={expanded === "bar" ? "Monthly spending" : "Card bills by month"}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={styles.modalHeader}>
-              <h2 className={styles.cardHeading}>
-                {expanded === "bar" ? "Monthly spending" : "Card bills by month"}
-              </h2>
-              <button
-                type="button"
-                className={styles.btn}
-                onClick={() => setExpanded(null)}
-              >
-                Close
-              </button>
-            </div>
-            <ResponsiveContainer width="100%" height={480}>
-              {expanded === "bar" ? barChartEl(true) : lineChartEl(true)}
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={expanded !== null}
+        onClose={() => setExpanded(null)}
+        title={expanded === "bar" ? "Monthly spending" : "Card bills by month"}
+      >
+        <ResponsiveContainer width="100%" height={480}>
+          {expanded === "bar" ? barChartEl(true) : lineChartEl(true)}
+        </ResponsiveContainer>
+      </Modal>
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode, SVGProps } from "react";
 import { Card, PageHeader, StatTile } from "@/app/components/ui";
 import {
   getBackendConnected,
@@ -66,10 +67,67 @@ async function loadStocks() {
   return { status, portfolio, error };
 }
 
+const ICON_PROPS: SVGProps<SVGSVGElement> = {
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+  focusable: false,
+};
+
+// Card-title glyphs, matching the sidebar icons in the Overview artboard.
+const SECTION_ICONS = {
+  budget: (
+    <>
+      <rect x="3" y="6" width="18" height="13" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M16 14.5h2" />
+    </>
+  ),
+  stocks: (
+    <>
+      <path d="M3 17l6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
+    </>
+  ),
+  projects: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+  tasks: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M8 12l3 3 5-6" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 3v4" />
+      <path d="M16 3v4" />
+    </>
+  ),
+} satisfies Record<string, ReactNode>;
+
+function CardTitle({ icon, children }: { icon: keyof typeof SECTION_ICONS; children: ReactNode }) {
+  return (
+    <span className={styles.overviewTitle}>
+      <svg {...ICON_PROPS} width={18} height={18} strokeWidth={1.8} className={styles.overviewIcon}>
+        {SECTION_ICONS[icon]}
+      </svg>
+      {children}
+    </span>
+  );
+}
+
 function OpenLink({ href }: { href: string }) {
   return (
     <Link href={href} className={styles.overviewLink}>
       Open
+      <svg {...ICON_PROPS} width={14} height={14} strokeWidth={2}>
+        <path d="M5 12h14" />
+        <path d="M13 6l6 6-6 6" />
+      </svg>
     </Link>
   );
 }
@@ -121,22 +179,40 @@ export default async function DashboardPage() {
 
   return (
     <main className={styles.wrapper}>
-      <PageHeader title="Overview" />
+      <PageHeader
+        title="Overview"
+        description="Everything at a glance. Open an area for the full view."
+      />
 
       <div className={styles.overviewGrid}>
-        <Card title="Budget" actions={<OpenLink href="/dashboard/budget" />}>
+        <Card
+          title={<CardTitle icon="budget">Budget</CardTitle>}
+          actions={<OpenLink href="/dashboard/budget" />}
+        >
           <StatTile label="Current balance" value={budgetValue} hint={budgetHint} />
         </Card>
-        <Card title="Stocks" actions={<OpenLink href="/dashboard/stocks" />}>
+        <Card
+          title={<CardTitle icon="stocks">Stocks</CardTitle>}
+          actions={<OpenLink href="/dashboard/stocks" />}
+        >
           <StatTile label="Total value" value={stocksValue} />
         </Card>
-        <Card title="Projects" actions={<OpenLink href="/dashboard/projects" />}>
+        <Card
+          title={<CardTitle icon="projects">Projects</CardTitle>}
+          actions={<OpenLink href="/dashboard/projects" />}
+        >
           <StatTile label="Total projects" value={projectsValue} />
         </Card>
-        <Card title="Tasks" actions={<OpenLink href="/dashboard/tasks" />}>
+        <Card
+          title={<CardTitle icon="tasks">Tasks</CardTitle>}
+          actions={<OpenLink href="/dashboard/tasks" />}
+        >
           <StatTile label="Open tasks" value={tasksValue} />
         </Card>
-        <Card title="Calendar" actions={<OpenLink href="/dashboard/calendar" />}>
+        <Card
+          title={<CardTitle icon="calendar">Calendar</CardTitle>}
+          actions={<OpenLink href="/dashboard/calendar" />}
+        >
           <StatTile label="Next event" value={calendarValue} hint={calendarHint} />
         </Card>
       </div>

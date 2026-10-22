@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Card, EmptyState } from "@/app/components/ui";
 import { startConnectAction, submitOtpAction } from "./actions";
 import styles from "./Stocks.module.css";
 
@@ -44,50 +45,64 @@ export default function ConnectCard({ headline, detail, canConnect }: Props) {
       router.refresh();
     });
 
-  return (
-    <section className={styles.card} aria-label="Wealthsimple connection">
-      <h2 className={styles.cardHeading}>{headline}</h2>
-      <p className={styles.emptyText}>{detail}</p>
-
-      {canConnect && phase === "idle" && (
-        <button type="button" className={styles.connectButton} onClick={start} disabled={pending}>
-          {pending ? "Contacting Wealthsimple…" : "Connect Wealthsimple"}
-        </button>
-      )}
-
-      {canConnect && phase === "otp" && (
-        <form
-          className={styles.otpRow}
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!pending && code.trim()) submit();
-          }}
-        >
-          <input
-            className={styles.otpInput}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="2FA code"
-            autoComplete="one-time-code"
-            inputMode="numeric"
-            aria-label="Wealthsimple 2FA code"
-            autoFocus
-          />
-          <button
-            type="submit"
-            className={styles.connectButton}
-            disabled={pending || !code.trim()}
-          >
-            {pending ? "Verifying…" : "Verify"}
+  const action =
+    canConnect || error ? (
+      <div className={styles.connectActions}>
+        {canConnect && phase === "idle" && (
+          <button type="button" className={styles.connectButton} onClick={start} disabled={pending}>
+            {pending ? "Contacting Wealthsimple…" : "Connect Wealthsimple"}
           </button>
-        </form>
-      )}
+        )}
 
-      {error && (
-        <p className={styles.connectError} role="alert">
-          {error}
-        </p>
-      )}
+        {canConnect && phase === "otp" && (
+          <form
+            className={styles.otpRow}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!pending && code.trim()) submit();
+            }}
+          >
+            <input
+              className={styles.otpInput}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="2FA code"
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              aria-label="Wealthsimple 2FA code"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className={styles.connectButton}
+              disabled={pending || !code.trim()}
+            >
+              {pending ? "Verifying…" : "Verify"}
+            </button>
+          </form>
+        )}
+
+        {error && (
+          <p className={styles.connectError} role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    ) : undefined;
+
+  return (
+    <section aria-label="Wealthsimple connection">
+      <Card as="div">
+        <EmptyState
+          title={
+            <span role="heading" aria-level={2}>
+              {headline}
+            </span>
+          }
+          body={detail}
+          action={action}
+        />
+      </Card>
     </section>
   );
 }

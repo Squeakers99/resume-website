@@ -33,6 +33,10 @@ export type DataTableProps<T> = {
   maxHeight?: CSSProperties["maxHeight"];
 };
 
+function isMissing(value: string | number | undefined): boolean {
+  return value === undefined || (typeof value === "number" && Number.isNaN(value));
+}
+
 function compareValues(a: string | number, b: string | number): number {
   if (typeof a === "number" && typeof b === "number") {
     if (Number.isNaN(a)) return Number.isNaN(b) ? 0 : 1;
@@ -68,7 +72,16 @@ export function DataTable<T>({
     // Decorate with the original index so equal values keep their input order.
     return rows
       .map((row, index) => ({ row, index, value: getValue(row) }))
-      .sort((a, b) => compareValues(a.value, b.value) * factor || a.index - b.index)
+      .sort((a, b) => {
+        // Missing values (undefined or NaN) always sink to the bottom, so they are
+        // handled before the direction factor flips the order.
+        const aMissing = isMissing(a.value);
+        const bMissing = isMissing(b.value);
+        if (aMissing || bMissing) {
+          return aMissing === bMissing ? a.index - b.index : aMissing ? 1 : -1;
+        }
+        return compareValues(a.value, b.value) * factor || a.index - b.index;
+      })
       .map((entry) => entry.row);
   }, [rows, columns, sort]);
 

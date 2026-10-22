@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Banner, Card, EmptyState } from "@/app/components/ui";
+import { formatDate } from "@/lib/format";
 import type { DashboardTask } from "@/lib/server-api";
 import { addTaskAction, deleteTaskAction, moveTaskAction, type ActionResult } from "../actions";
 import styles from "../Dashboard.module.css";
@@ -38,98 +40,96 @@ export default function PortfolioTasksSection({ tasks, backendConnected }: Props
   }
 
   return (
-    <section className={styles.card} aria-label="Portfolio tasks" aria-busy={isPending}>
-      <h2 className={styles.cardTitle}>portfolio-tasks</h2>
+    <section aria-label="Portfolio tasks" aria-busy={isPending}>
+      <Card as="div" title="portfolio-tasks">
+        {!backendConnected && <Banner tone="warning">Backend offline — tasks unavailable.</Banner>}
 
-      {!backendConnected && (
-        <p className={styles.offlineNote}>Backend offline — tasks unavailable.</p>
-      )}
+        <form className={styles.kanbanAddForm} action={handleAdd}>
+          <input
+            name="title"
+            type="text"
+            className={styles.input}
+            placeholder="New task..."
+            aria-label="Task title"
+            required
+          />
+          <select name="priority" className={styles.select} defaultValue="Medium" aria-label="Priority">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+          <select name="status" className={styles.select} defaultValue="backlog" aria-label="Column">
+            {COLUMNS.map((col) => (
+              <option key={col.id} value={col.id}>
+                {col.title}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className={styles.btnSecondary} disabled={isPending || !backendConnected}>
+            Add
+          </button>
+        </form>
 
-      <form className={styles.kanbanAddForm} action={handleAdd}>
-        <input
-          name="title"
-          type="text"
-          className={styles.input}
-          placeholder="New task..."
-          aria-label="Task title"
-          required
-        />
-        <select name="priority" className={styles.select} defaultValue="Medium" aria-label="Priority">
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-        </select>
-        <select name="status" className={styles.select} defaultValue="backlog" aria-label="Column">
-          {COLUMNS.map((col) => (
-            <option key={col.id} value={col.id}>
-              {col.title}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className={styles.btnSecondary} disabled={isPending || !backendConnected}>
-          Add
-        </button>
-      </form>
+        {error && <Banner tone="error">{error}</Banner>}
 
-      {error && (
-        <p className={styles.feedbackError} role="alert">
-          {error}
-        </p>
-      )}
-
-      <div className={styles.kanban}>
-        {COLUMNS.map((col, colIndex) => {
-          const columnTasks = tasks.filter((t) => t.status === col.id);
-          return (
-            <div key={col.id} className={styles.kanbanColumn}>
-              <div className={styles.kanbanColumnHeader}>
-                <span className={styles.kanbanColumnTitle}>{col.title}</span>
-                <span className={styles.kanbanColumnCount}>{columnTasks.length}</span>
-              </div>
-              <div className={styles.kanbanColumnCards}>
-                {columnTasks.map((task) => (
-                  <div key={task.id} className={styles.taskCard}>
-                    <div className={styles.taskCardTitle}>{task.title}</div>
-                    <div className={styles.taskCardMeta}>
-                      <span>{task.priority}</span>
-                      <span>{task.createdAt.slice(5, 10)}</span>
-                    </div>
-                    <div className={styles.taskCardActions}>
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        aria-label={`Move "${task.title}" left`}
-                        disabled={colIndex === 0 || isPending}
-                        onClick={() => run(() => moveTaskAction(task.id, COLUMNS[colIndex - 1].id))}
-                      >
-                        ←
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.iconBtn}
-                        aria-label={`Move "${task.title}" right`}
-                        disabled={colIndex === COLUMNS.length - 1 || isPending}
-                        onClick={() => run(() => moveTaskAction(task.id, COLUMNS[colIndex + 1].id))}
-                      >
-                        →
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                        aria-label={`Delete "${task.title}"`}
-                        disabled={isPending}
-                        onClick={() => run(() => deleteTaskAction(task.id))}
-                      >
-                        ×
-                      </button>
-                    </div>
+        {backendConnected && tasks.length === 0 ? (
+          <EmptyState title="No tasks yet" body="Add a task above to start the board." />
+        ) : (
+          <div className={styles.kanban}>
+            {COLUMNS.map((col, colIndex) => {
+              const columnTasks = tasks.filter((t) => t.status === col.id);
+              return (
+                <div key={col.id} className={styles.kanbanColumn}>
+                  <div className={styles.kanbanColumnHeader}>
+                    <span className={styles.kanbanColumnTitle}>{col.title}</span>
+                    <span className={styles.kanbanColumnCount}>{columnTasks.length}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                  <div className={styles.kanbanColumnCards}>
+                    {columnTasks.map((task) => (
+                      <div key={task.id} className={styles.taskCard}>
+                        <div className={styles.taskCardTitle}>{task.title}</div>
+                        <div className={styles.taskCardMeta}>
+                          <span>{task.priority}</span>
+                          <span>{formatDate(task.createdAt)}</span>
+                        </div>
+                        <div className={styles.taskCardActions}>
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            aria-label={`Move "${task.title}" left`}
+                            disabled={colIndex === 0 || isPending}
+                            onClick={() => run(() => moveTaskAction(task.id, COLUMNS[colIndex - 1].id))}
+                          >
+                            ←
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            aria-label={`Move "${task.title}" right`}
+                            disabled={colIndex === COLUMNS.length - 1 || isPending}
+                            onClick={() => run(() => moveTaskAction(task.id, COLUMNS[colIndex + 1].id))}
+                          >
+                            →
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                            aria-label={`Delete "${task.title}"`}
+                            disabled={isPending}
+                            onClick={() => run(() => deleteTaskAction(task.id))}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
     </section>
   );
 }

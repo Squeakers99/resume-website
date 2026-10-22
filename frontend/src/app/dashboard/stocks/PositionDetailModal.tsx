@@ -17,6 +17,8 @@ import type {
   StocksPosition,
   StocksSecurityDetail,
 } from "@/lib/server-api";
+import { Modal, StatTile } from "@/app/components/ui";
+import { formatDateTime, formatMoney, formatNumber } from "@/lib/format";
 import { securityChartAction, securityDetailAction, securityNewsAction } from "./actions";
 import { formatDayFromDate } from "@/lib/formatDate";
 import styles from "./Stocks.module.css";
@@ -29,14 +31,14 @@ const PERIODS: Array<{ id: StocksChartPeriod; label: string }> = [
   { id: "FIVE_YEARS", label: "5Y" },
 ];
 
-const money = (n: number, currency = "CAD") =>
-  n.toLocaleString("en-CA", { style: "currency", currency });
-
-const signedMoney = (n: number, currency = "CAD") =>
-  `${n >= 0 ? "+" : ""}${money(n, currency)}`;
-
-const compact = (n: number) =>
-  n.toLocaleString("en-CA", { notation: "compact", maximumFractionDigits: 1 });
+// Axis ticks: "14:03" for 1D, "SEP" otherwise. No shared formatter returns
+// these bare parts, so local Intl formatters keep the tick text unchanged.
+const TIME_FMT = new Intl.DateTimeFormat("en-CA", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const MONTH_FMT = new Intl.DateTimeFormat("en-CA", { month: "short" });
 
 const tooltipContentStyle = {
   background: "var(--card)",
@@ -50,20 +52,14 @@ const tooltipContentStyle = {
 function tickFor(period: StocksChartPeriod) {
   return (t: unknown) => {
     const d = new Date(String(t));
-    if (period === "ONE_DAY") {
-      return d.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: false });
-    }
-    return d.toLocaleDateString("en-CA", { month: "short" }).toUpperCase();
+    if (period === "ONE_DAY") return TIME_FMT.format(d);
+    return MONTH_FMT.format(d).toUpperCase();
   };
 }
 
 function labelFor(period: StocksChartPeriod) {
-  return (t: unknown) => {
-    const d = new Date(String(t));
-    return period === "ONE_DAY"
-      ? `${formatDayFromDate(d)} ${d.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: false })}`
-      : formatDayFromDate(d);
-  };
+  return (t: unknown) =>
+    period === "ONE_DAY" ? formatDateTime(String(t)) : formatDayFromDate(new Date(String(t)));
 }
 
 type Props = { position: StocksPosition; onClose: () => void };
@@ -77,14 +73,6 @@ export default function PositionDetailModal({ position, onClose }: Props) {
   const [news, setNews] = useState<{ items: StocksNewsItem[]; tldr: string | null } | null>(null);
   const [newsError, setNewsError] = useState<string | null>(null);
   const [chartPending, startChart] = useTransition();
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +93,8 @@ export default function PositionDetailModal({ position, onClose }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    setChartError(null);
+    // chartError is cleared by the period buttons (and starts null on mount);
+    // the modal remounts per position, so no reset is needed here.
     startChart(async () => {
       const r = await securityChartAction(position.securityId, period);
       if (cancelled) return;
@@ -122,7 +111,7 @@ export default function PositionDetailModal({ position, onClose }: Props) {
         {
           label: "Market cap",
           // WS reports marketCap in millions (live-verified 2026-07-09).
-          value: detail.marketCap === null ? "—" : compact(detail.marketCap * 1_000_000),
+          value: detail.marketCap === null ? "—" : formatNumber(detail.marketCap * 1_000_000, { compact: true }),
         },
         { label: "P/E", value: detail.peRatio === null ? "—" : detail.peRatio.toFixed(1) },
         { label: "EPS", value: detail.eps === null ? "—" : detail.eps.toFixed(2) },
@@ -138,10 +127,10 @@ export default function PositionDetailModal({ position, onClose }: Props) {
           value: detail.dividendYield === null ? "—" : `${(detail.dividendYield * 100).toFixed(2)}%`,
         },
         { label: "Beta", value: detail.beta === null ? "—" : detail.beta.toFixed(2) },
-        { label: "Avg volume", value: detail.avgVolume === null ? "—" : compact(detail.avgVolume) },
+        { label: "Avg volume", value: detail.avgVolume === null ? "—" : formatNumber(detail.avgVolume, { compact: true }) },
         {
           label: "Volume",
-          value: detail.dailyVolume === null ? "—" : compact(detail.dailyVolume),
+          value: detail.dailyVolume === null ? "—" : formatNumber(detail.dailyVolume, { compact: true }),
         },
         {
           label: "MER",
@@ -155,37 +144,27 @@ export default function PositionDetailModal({ position, onClose }: Props) {
         { label: "HQ", value: detail.hqLocation ?? "—" },
         {
           label: "Employees",
-          value: detail.employees === null ? "—" : detail.employees.toLocaleString("en-CA"),
+          value: detail.employees === null ? "—" : formatNumber(detail.employees),
         },
       ]
     : [];
 
   return (
-    <div
-      className={styles.modalOverlay}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${position.symbol} details`}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      open
+      onClose={onClose}
+      title={
+        <>
+          {position.symbol}
+          {position.exchange ? ` · ${position.exchange}` : ""}
+        </>
+      }
     >
-      <div className={styles.modal}>
-        <div className={styles.modalHeader}>
-          <div>
-            <h2 className={styles.cardHeading}>
-              {position.symbol}
-              {position.exchange ? ` · ${position.exchange}` : ""}
-            </h2>
-            <p className={styles.emptyText}>
-              {position.name} · {position.quantity.toLocaleString("en-CA")} stock
-              {position.quantity === 1 ? "" : "s"}
-            </p>
-          </div>
-          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        </div>
+      <div className={styles.modalContent}>
+        <p className={styles.emptyText}>
+          {position.name} · {formatNumber(position.quantity)} stock
+          {position.quantity === 1 ? "" : "s"}
+        </p>
 
         <div className={styles.periodRow} role="group" aria-label="Chart period">
           {PERIODS.map((p) => (
@@ -193,7 +172,12 @@ export default function PositionDetailModal({ position, onClose }: Props) {
               key={p.id}
               type="button"
               className={`${styles.periodButton} ${period === p.id ? styles.periodButtonActive : ""}`}
-              onClick={() => setPeriod(p.id)}
+              onClick={() => {
+                // Same period: no refetch, so keep any error on screen.
+                if (p.id === period) return;
+                setChartError(null);
+                setPeriod(p.id);
+              }}
               disabled={chartPending && period === p.id}
             >
               {p.label}
@@ -236,7 +220,7 @@ export default function PositionDetailModal({ position, onClose }: Props) {
                   tickFormatter={(v: number) => v.toFixed(2)}
                 />
                 <Tooltip
-                  formatter={(value) => money(Number(value), detail?.currency ?? position.currency)}
+                  formatter={(value) => formatMoney(Number(value), detail?.currency ?? position.currency)}
                   labelFormatter={labelFor(period)}
                   contentStyle={tooltipContentStyle}
                   itemStyle={{ color: "var(--text-main)", margin: 0 }}
@@ -257,41 +241,42 @@ export default function PositionDetailModal({ position, onClose }: Props) {
 
         <div className={styles.modalGrid}>
           <div className={styles.modalLeft}>
-        <section className={styles.statRow} aria-label="Position">
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Price</span>
-            <span className={styles.statValue}>
-              {position.price === null ? "—" : money(position.price, position.currency)}
-            </span>
-          </div>
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Value (CAD)</span>
-            <span className={styles.statValue}>{money(position.value)}</span>
-          </div>
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Day</span>
-            <span
-              className={`${styles.statValue} ${
-                position.dayChange === null ? "" : position.dayChange >= 0 ? styles.gain : styles.loss
-              }`}
-            >
-              {position.dayChange === null ? "—" : signedMoney(position.dayChange, position.currency)}
-            </span>
-          </div>
-          <div className={styles.statTile}>
-            <span className={styles.statLabel}>Total return</span>
-            <span
-              className={`${styles.statValue} ${
-                position.totalReturn === null
-                  ? ""
-                  : position.totalReturn >= 0
-                    ? styles.gain
-                    : styles.loss
-              }`}
-            >
-              {position.totalReturn === null ? "—" : signedMoney(position.totalReturn)}
-            </span>
-          </div>
+        <section className={styles.positionStats} aria-label="Position">
+          <StatTile
+            label="Price"
+            value={position.price === null ? "—" : formatMoney(position.price, position.currency)}
+          />
+          <StatTile label="Value (CAD)" value={formatMoney(position.value)} />
+          <StatTile
+            label="Day"
+            value={
+              position.dayChange === null
+                ? "—"
+                : formatMoney(position.dayChange, position.currency, { signed: true })
+            }
+            tone={
+              position.dayChange === null
+                ? "default"
+                : position.dayChange >= 0
+                  ? "positive"
+                  : "negative"
+            }
+          />
+          <StatTile
+            label="Total return"
+            value={
+              position.totalReturn === null
+                ? "—"
+                : formatMoney(position.totalReturn, "CAD", { signed: true })
+            }
+            tone={
+              position.totalReturn === null
+                ? "default"
+                : position.totalReturn >= 0
+                  ? "positive"
+                  : "negative"
+            }
+          />
         </section>
 
         <section aria-label="Fundamentals">
@@ -356,6 +341,6 @@ export default function PositionDetailModal({ position, onClose }: Props) {
           </section>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

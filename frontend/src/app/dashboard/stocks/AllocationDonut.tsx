@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { formatMoney } from "@/lib/format";
 import styles from "./Stocks.module.css";
 
 type Slice = { symbol: string; value: number };
@@ -17,9 +18,6 @@ const SERIES_VARS = [
   "var(--series-8)",
 ];
 const MAX_SLICES = SERIES_VARS.length;
-
-const money = (n: number) =>
-  n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 const tooltipContentStyle = {
   background: "var(--card)",
@@ -122,7 +120,7 @@ export default function AllocationDonut({ positions }: { positions: Slice[] }) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value) => money(Number(value))}
+              formatter={(value) => formatMoney(Number(value))}
               contentStyle={tooltipContentStyle}
               itemStyle={{ color: "var(--text-main)", margin: 0 }}
               labelStyle={{ color: "var(--text-muted)", margin: 0 }}

@@ -10,12 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Card } from "@/app/components/ui";
 import type { StocksHistorySeries } from "@/lib/server-api";
 import { formatDay } from "@/lib/formatDate";
+import { formatMoney } from "@/lib/format";
 import styles from "./Stocks.module.css";
-
-const money = (n: number) =>
-  n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 const tooltipContentStyle = {
   background: "var(--card)",
@@ -26,12 +25,13 @@ const tooltipContentStyle = {
   fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
 };
 
-const monthTick = (d: unknown) =>
-  new Date(`${String(d)}T00:00:00`)
-    .toLocaleDateString("en-CA", { month: "short" })
-    .toUpperCase();
+// Short month name, upper-cased ("SEP"). formatMonth needs a year too, so a
+// local Intl formatter keeps the tick text unchanged.
+const MONTH_FMT = new Intl.DateTimeFormat("en-CA", { month: "short" });
 
-const dollarsTick = (v: number) => `$${Math.round(v).toLocaleString("en-CA")}`;
+const monthTick = (d: unknown) => MONTH_FMT.format(new Date(`${String(d)}T00:00:00`)).toUpperCase();
+
+const dollarsTick = (v: number) => formatMoney(v, "CAD", { cents: false });
 
 export default function PortfolioChart({ series }: { series: StocksHistorySeries[] }) {
   const [selectedId, setSelectedId] = useState("all");
@@ -41,10 +41,11 @@ export default function PortfolioChart({ series }: { series: StocksHistorySeries
   );
 
   return (
-    <>
-      <div className={styles.chartHeader}>
-        <h2 className={styles.cardHeading}>Portfolio over time</h2>
-        {series.length > 0 && (
+    <Card
+      as="div"
+      title="Portfolio over time"
+      actions={
+        series.length > 0 ? (
           <select
             className={styles.select}
             value={selected?.id ?? "all"}
@@ -57,8 +58,9 @@ export default function PortfolioChart({ series }: { series: StocksHistorySeries
               </option>
             ))}
           </select>
-        )}
-      </div>
+        ) : undefined
+      }
+    >
       {!selected || selected.points.length === 0 ? (
         <p className={styles.emptyText}>No history yet.</p>
       ) : (
@@ -86,7 +88,7 @@ export default function PortfolioChart({ series }: { series: StocksHistorySeries
                 tickFormatter={dollarsTick}
               />
               <Tooltip
-                formatter={(value) => money(Number(value))}
+                formatter={(value) => formatMoney(Number(value))}
                 labelFormatter={(d) => formatDay(String(d))}
                 contentStyle={tooltipContentStyle}
                 itemStyle={{ color: "var(--text-main)", margin: 0 }}
@@ -104,6 +106,6 @@ export default function PortfolioChart({ series }: { series: StocksHistorySeries
           </ResponsiveContainer>
         </div>
       )}
-    </>
+    </Card>
   );
 }

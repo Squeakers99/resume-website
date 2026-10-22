@@ -9,14 +9,16 @@ export type CardProps = {
   children: ReactNode;
   /** Element tag for the card root. Defaults to "section". */
   as?: CardElement;
+  /** Accessible name for the card root (makes a "section" card a named region). */
+  ariaLabel?: string;
 };
 
-export function Card({ title, actions, children, as = "section" }: CardProps) {
+export function Card({ title, actions, children, as = "section", ariaLabel }: CardProps) {
   const Tag = as;
   const hasHeader = title !== undefined || actions !== undefined;
 
   return (
-    <Tag className={styles.card}>
+    <Tag className={styles.card} aria-label={ariaLabel}>
       {hasHeader ? (
         <div className={styles.cardHeader}>
           {title !== undefined ? <h2 className={styles.cardTitle}>{title}</h2> : <span />}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { Banner, Card } from "@/app/components/ui";
 import { finalizeProjectImagesAction, submitProjectAction } from "../actions";
 import styles from "../Dashboard.module.css";
 
@@ -105,171 +106,165 @@ export default function ProjectUploadSection() {
   }
 
   return (
-    <section className={styles.card} aria-label="Project upload" aria-busy={isPending}>
-      <h2 className={styles.cardTitle}>project-upload</h2>
-      <p className={styles.cardSubtitle}>Add new project to portfolio</p>
+    <section aria-label="Project upload" aria-busy={isPending}>
+      <Card as="div" title="project-upload">
+        <p className={styles.cardSubtitle}>Add new project to portfolio</p>
 
-      <form ref={formRef} className={styles.form} action={handleSubmit}>
-        <div className={styles.formRow}>
-          <label className={styles.label} htmlFor="project-name">
-            Project Name
-          </label>
-          <input
-            id="project-name"
-            name="title"
-            type="text"
-            className={styles.input}
-            placeholder="My next big thing"
-            required
-          />
-        </div>
-
-        <div className={styles.formRow}>
-          <label className={styles.label} htmlFor="project-desc">
-            Description
-          </label>
-          <textarea
-            id="project-desc"
-            name="description"
-            className={styles.textarea}
-            rows={3}
-            placeholder="What it does and why it matters"
-            required
-          />
-        </div>
-
-        <div className={styles.formRow}>
-          <label className={styles.label} htmlFor="main-image">
-            Main Image
-          </label>
-          <div className={styles.fileRow}>
+        <form ref={formRef} className={styles.form} action={handleSubmit}>
+          <div className={styles.formRow}>
+            <label className={styles.label} htmlFor="project-name">
+              Project Name
+            </label>
             <input
-              id="main-image"
-              type="file"
-              accept="image/*"
-              className={styles.fileInput}
-              onChange={(e) => setMainFile(e.target.files?.[0] ?? null)}
-            />
-            {mainFile && (
-              <button
-                type="button"
-                className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                aria-label="Remove main image"
-                onClick={() => setMainFile(null)}
-              >
-                ×
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.formRow}>
-          <label className={styles.label} htmlFor="secondary-images">
-            Secondary Images
-          </label>
-          {secondaryFiles.length > 0 && (
-            <ul className={styles.fileList}>
-              {secondaryFiles.map((file, i) => (
-                <li key={`${file.name}-${i}`} className={styles.fileListItem}>
-                  <span className={styles.fileName}>{file.name}</span>
-                  <button
-                    type="button"
-                    className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                    aria-label={`Remove ${file.name}`}
-                    onClick={() =>
-                      setSecondaryFiles((prev) => prev.filter((_, idx) => idx !== i))
-                    }
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <input
-            id="secondary-images"
-            type="file"
-            accept="image/*"
-            multiple
-            className={styles.fileInput}
-            onChange={(e) => {
-              const picked = Array.from(e.target.files ?? []);
-              if (picked.length) setSecondaryFiles((prev) => [...prev, ...picked]);
-              e.target.value = "";
-            }}
-          />
-        </div>
-
-        <div className={styles.formRow}>
-          <label className={styles.label} htmlFor="project-tags">
-            Tags / Tech Stack
-          </label>
-          {tags.length > 0 && (
-            <div className={styles.chipRow}>
-              {tags.map((tag) => (
-                <span key={tag} className={styles.chip}>
-                  {tag}
-                  <button
-                    type="button"
-                    className={styles.chipRemove}
-                    aria-label={`Remove ${tag}`}
-                    onClick={() => setTags((prev) => prev.filter((t) => t !== tag))}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <div className={styles.fileRow}>
-            <input
-              id="project-tags"
+              id="project-name"
+              name="title"
               type="text"
               className={styles.input}
-              placeholder="Type a tag, press Enter"
-              value={tagDraft}
-              onChange={(e) => setTagDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === ",") {
-                  e.preventDefault();
-                  addTag();
-                }
+              placeholder="My next big thing"
+              required
+            />
+          </div>
+
+          <div className={styles.formRow}>
+            <label className={styles.label} htmlFor="project-desc">
+              Description
+            </label>
+            <textarea
+              id="project-desc"
+              name="description"
+              className={styles.textarea}
+              rows={3}
+              placeholder="What it does and why it matters"
+              required
+            />
+          </div>
+
+          <div className={styles.formRow}>
+            <label className={styles.label} htmlFor="main-image">
+              Main Image
+            </label>
+            <div className={styles.fileRow}>
+              <input
+                id="main-image"
+                type="file"
+                accept="image/*"
+                className={styles.fileInput}
+                onChange={(e) => setMainFile(e.target.files?.[0] ?? null)}
+              />
+              {mainFile && (
+                <button
+                  type="button"
+                  className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                  aria-label="Remove main image"
+                  onClick={() => setMainFile(null)}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.formRow}>
+            <label className={styles.label} htmlFor="secondary-images">
+              Secondary Images
+            </label>
+            {secondaryFiles.length > 0 && (
+              <ul className={styles.fileList}>
+                {secondaryFiles.map((file, i) => (
+                  <li key={`${file.name}-${i}`} className={styles.fileListItem}>
+                    <span className={styles.fileName}>{file.name}</span>
+                    <button
+                      type="button"
+                      className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                      aria-label={`Remove ${file.name}`}
+                      onClick={() =>
+                        setSecondaryFiles((prev) => prev.filter((_, idx) => idx !== i))
+                      }
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <input
+              id="secondary-images"
+              type="file"
+              accept="image/*"
+              multiple
+              className={styles.fileInput}
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? []);
+                if (picked.length) setSecondaryFiles((prev) => [...prev, ...picked]);
+                e.target.value = "";
               }}
             />
-            <button type="button" className={styles.btnSecondary} onClick={addTag}>
-              Add Tag
+          </div>
+
+          <div className={styles.formRow}>
+            <label className={styles.label} htmlFor="project-tags">
+              Tags / Tech Stack
+            </label>
+            {tags.length > 0 && (
+              <div className={styles.chipRow}>
+                {tags.map((tag) => (
+                  <span key={tag} className={styles.chip}>
+                    {tag}
+                    <button
+                      type="button"
+                      className={styles.chipRemove}
+                      aria-label={`Remove ${tag}`}
+                      onClick={() => setTags((prev) => prev.filter((t) => t !== tag))}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className={styles.fileRow}>
+              <input
+                id="project-tags"
+                type="text"
+                className={styles.input}
+                placeholder="Type a tag, press Enter"
+                value={tagDraft}
+                onChange={(e) => setTagDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
+              />
+              <button type="button" className={styles.btnSecondary} onClick={addTag}>
+                Add Tag
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.formRow}>
+            <label className={styles.label} htmlFor="github-url">
+              GitHub URL
+            </label>
+            <input
+              id="github-url"
+              name="githubUrl"
+              type="url"
+              className={styles.input}
+              placeholder="https://github.com/..."
+            />
+          </div>
+
+          {status && <Banner tone={status.ok ? "info" : "error"}>{status.message}</Banner>}
+
+          <div className={styles.formActions}>
+            <button type="submit" className={styles.btnPrimary} disabled={isPending}>
+              {isPending ? "Publishing..." : "Submit Project"}
             </button>
           </div>
-        </div>
-
-        <div className={styles.formRow}>
-          <label className={styles.label} htmlFor="github-url">
-            GitHub URL
-          </label>
-          <input
-            id="github-url"
-            name="githubUrl"
-            type="url"
-            className={styles.input}
-            placeholder="https://github.com/..."
-          />
-        </div>
-
-        {status && (
-          <p
-            className={status.ok ? styles.feedbackOk : styles.feedbackError}
-            role="status"
-          >
-            {status.message}
-          </p>
-        )}
-
-        <div className={styles.formActions}>
-          <button type="submit" className={styles.btnPrimary} disabled={isPending}>
-            {isPending ? "Publishing..." : "Submit Project"}
-          </button>
-        </div>
-      </form>
+        </form>
+      </Card>
     </section>
   );
 }

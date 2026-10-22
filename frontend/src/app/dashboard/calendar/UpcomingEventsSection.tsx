@@ -1,15 +1,35 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { Banner, Card, EmptyState } from "@/app/components/ui";
+import { formatDate } from "@/lib/format";
 import type { GoogleCalendarEvent } from "@/lib/google-calendar";
 import { addEventAction, deleteEventAction, type ActionResult } from "../actions";
 import styles from "../Dashboard.module.css";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+// Spelled-out month names for the day-cell aria-labels only; visible dates use
+// lib/format.
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
+
+// Calendar nav headers keep the year and weekday visible ("Jun 2026",
+// "Fri, Jun 5 2026"); the agenda and task dates stay on lib/format.
+const MONTH_HEADER_FMT = new Intl.DateTimeFormat("en-CA", { month: "short", year: "numeric" });
+const DAY_HEADER_FMT = new Intl.DateTimeFormat("en-CA", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+function formatDayHeader(date: Date) {
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    DAY_HEADER_FMT.formatToParts(date).find((p) => p.type === type)?.value ?? "";
+  return `${part("weekday")}, ${part("month")} ${part("day")} ${part("year")}`;
+}
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -164,148 +184,146 @@ export default function UpcomingEventsSection({ googleEvents, googleConnected }:
   ];
 
   return (
-    <section className={styles.card} aria-label="Upcoming events" aria-busy={isPending}>
-      <div className={styles.calendarHeader}>
-        <h2 className={styles.cardTitle}>upcoming-events</h2>
-        {tab !== "Agenda" && (
-          <div className={styles.calendarNav}>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              aria-label={tab === "Day" ? "Previous day" : "Previous month"}
-              onClick={() => (tab === "Day" ? shiftDay(-1) : shiftMonth(-1))}
-            >
-              ←
-            </button>
-            <p className={styles.calendarMonth}>
-              {tab === "Day"
-                ? `${WEEKDAYS[selectedDate.getDay()]}, ${MONTHS[selected.month]} ${selected.day} ${selected.year}`
-                : `${MONTHS[view.month]} ${view.year}`}
-            </p>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              aria-label={tab === "Day" ? "Next day" : "Next month"}
-              onClick={() => (tab === "Day" ? shiftDay(1) : shiftMonth(1))}
-            >
-              →
-            </button>
-          </div>
-        )}
-      </div>
-
-      {!googleConnected && (
-        <p className={styles.offlineNote}>
-          Google Calendar not connected — sign out and back in to grant calendar access.
-        </p>
-      )}
-
-      <div className={styles.viewTabs}>
-        {(["Day", "Month", "Agenda"] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            className={`${styles.viewTab} ${tab === v ? styles.viewTabActive : ""}`}
-            onClick={() => setTab(v)}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-
-      {error && (
-        <p className={styles.feedbackError} role="alert">
-          {error}
-        </p>
-      )}
-
-      {tab === "Month" && (
-        <div className={styles.calendarGrid}>
-          {WEEKDAYS.map((d) => (
-            <div key={d} className={styles.calendarWeekday}>
-              {d}
-            </div>
-          ))}
-          {days.map((day, i) => {
-            if (day === null) {
-              return (
-                <div key={i} className={`${styles.calendarCell} ${styles.calendarCellEmpty}`} />
-              );
-            }
-            const key = dateKey(view.year, view.month, day);
-            const dayEvents = itemsByDate.get(key) ?? [];
-            return (
+    <section aria-label="Upcoming events" aria-busy={isPending}>
+      <Card
+        as="div"
+        title="upcoming-events"
+        actions={
+          tab !== "Agenda" ? (
+            <div className={styles.calendarNav}>
               <button
                 type="button"
-                key={i}
-                className={`${styles.calendarCell} ${styles.calendarCellButton} ${key === todayKey ? styles.calendarCellToday : ""}`}
-                aria-label={`Open day view for ${MONTHS[view.month]} ${day}, ${view.year}`}
-                onClick={() => openDay(day)}
+                className={styles.iconBtn}
+                aria-label={tab === "Day" ? "Previous day" : "Previous month"}
+                onClick={() => (tab === "Day" ? shiftDay(-1) : shiftMonth(-1))}
               >
-                <span className={styles.calendarCellDay}>{day}</span>
-                {dayEvents.slice(0, 2).map((item) => (
-                  <span key={`${item.id}-${item.date}`} className={styles.calendarCellEvent}>
-                    {item.title}
-                  </span>
-                ))}
-                {dayEvents.length > 2 && (
-                  <span className={styles.calendarCellMore}>
-                    +{dayEvents.length - 2} more
-                  </span>
-                )}
+                ←
               </button>
-            );
-          })}
+              <p className={styles.calendarMonth}>
+                {tab === "Day"
+                  ? formatDayHeader(selectedDate)
+                  : MONTH_HEADER_FMT.format(new Date(view.year, view.month, 1))}
+              </p>
+              <button
+                type="button"
+                className={styles.iconBtn}
+                aria-label={tab === "Day" ? "Next day" : "Next month"}
+                onClick={() => (tab === "Day" ? shiftDay(1) : shiftMonth(1))}
+              >
+                →
+              </button>
+            </div>
+          ) : undefined
+        }
+      >
+        {!googleConnected && (
+          <Banner tone="warning">
+            Google Calendar not connected — sign out and back in to grant calendar access.
+          </Banner>
+        )}
+
+        <div className={styles.viewTabs}>
+          {(["Day", "Month", "Agenda"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={`${styles.viewTab} ${tab === v ? styles.viewTabActive : ""}`}
+              onClick={() => setTab(v)}
+            >
+              {v}
+            </button>
+          ))}
         </div>
-      )}
 
-      {tab === "Day" && (
-        <ul className={styles.agendaList}>
-          {dayItems.length === 0 && (
-            <li className={styles.agendaEmpty}>No events on this day.</li>
-          )}
-          {dayItems.map((item) => renderItem(item, item.time ?? "all-day"))}
-        </ul>
-      )}
+        {error && <Banner tone="error">{error}</Banner>}
 
-      {tab === "Agenda" && (
-        <ul className={styles.agendaList}>
-          {upcoming.length === 0 && (
-            <li className={styles.agendaEmpty}>No upcoming events.</li>
-          )}
-          {upcoming.slice(0, AGENDA_LIMIT).map((item) => renderItem(item, item.date))}
-          {upcoming.length > AGENDA_LIMIT && (
-            <li className={styles.agendaEmpty}>
-              +{upcoming.length - AGENDA_LIMIT} more further out
-            </li>
-          )}
-        </ul>
-      )}
+        {tab === "Month" && (
+          <div className={styles.calendarGrid}>
+            {WEEKDAYS.map((d) => (
+              <div key={d} className={styles.calendarWeekday}>
+                {d}
+              </div>
+            ))}
+            {days.map((day, i) => {
+              if (day === null) {
+                return (
+                  <div key={i} className={`${styles.calendarCell} ${styles.calendarCellEmpty}`} />
+                );
+              }
+              const key = dateKey(view.year, view.month, day);
+              const dayEvents = itemsByDate.get(key) ?? [];
+              return (
+                <button
+                  type="button"
+                  key={i}
+                  className={`${styles.calendarCell} ${styles.calendarCellButton} ${key === todayKey ? styles.calendarCellToday : ""}`}
+                  aria-label={`Open day view for ${MONTHS[view.month]} ${day}, ${view.year}`}
+                  onClick={() => openDay(day)}
+                >
+                  <span className={styles.calendarCellDay}>{day}</span>
+                  {dayEvents.slice(0, 2).map((item) => (
+                    <span key={`${item.id}-${item.date}`} className={styles.calendarCellEvent}>
+                      {item.title}
+                    </span>
+                  ))}
+                  {dayEvents.length > 2 && (
+                    <span className={styles.calendarCellMore}>
+                      +{dayEvents.length - 2} more
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-      <form className={styles.eventForm} action={handleAdd}>
-        <input
-          name="date"
-          type="date"
-          className={styles.input}
-          aria-label="Event date"
-          required
-        />
-        <input
-          name="title"
-          type="text"
-          className={styles.input}
-          placeholder="New event..."
-          aria-label="Event title"
-          required
-        />
-        <button
-          type="submit"
-          className={styles.btnSecondary}
-          disabled={isPending || !googleConnected}
-        >
-          Add
-        </button>
-      </form>
+        {tab === "Day" &&
+          (dayItems.length === 0 ? (
+            <EmptyState title="No events on this day." />
+          ) : (
+            <ul className={styles.agendaList}>
+              {dayItems.map((item) => renderItem(item, item.time ?? "all-day"))}
+            </ul>
+          ))}
+
+        {tab === "Agenda" && upcoming.length === 0 && <EmptyState title="No upcoming events." />}
+
+        {tab === "Agenda" && upcoming.length > 0 && (
+          <ul className={styles.agendaList}>
+            {upcoming.slice(0, AGENDA_LIMIT).map((item) => renderItem(item, formatDate(item.date)))}
+            {upcoming.length > AGENDA_LIMIT && (
+              <li className={styles.agendaEmpty}>
+                +{upcoming.length - AGENDA_LIMIT} more further out
+              </li>
+            )}
+          </ul>
+        )}
+
+        <form className={styles.eventForm} action={handleAdd}>
+          <input
+            name="date"
+            type="date"
+            className={styles.input}
+            aria-label="Event date"
+            required
+          />
+          <input
+            name="title"
+            type="text"
+            className={styles.input}
+            placeholder="New event..."
+            aria-label="Event title"
+            required
+          />
+          <button
+            type="submit"
+            className={styles.btnSecondary}
+            disabled={isPending || !googleConnected}
+          >
+            Add
+          </button>
+        </form>
+      </Card>
     </section>
   );
 }

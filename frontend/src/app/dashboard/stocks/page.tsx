@@ -5,6 +5,8 @@ import {
   getStocksStatusCached,
 } from "@/lib/dashboard-cache";
 import type { StocksHistory, StocksPortfolio, StocksStatus } from "@/lib/server-api";
+import { Banner, Card, StatTile } from "@/app/components/ui";
+import { formatMoney } from "@/lib/format";
 import AllocationDonut from "./AllocationDonut";
 import { formatDayFromDate } from "@/lib/formatDate";
 import ConnectCard from "./ConnectCard";
@@ -13,14 +15,8 @@ import styles from "./Stocks.module.css";
 
 export const metadata = { title: "Stocks" };
 
-const money = (n: number, currency = "CAD") =>
-  n.toLocaleString("en-CA", { style: "currency", currency });
-
-const signedMoney = (n: number, currency = "CAD") =>
-  `${n >= 0 ? "+" : ""}${money(n, currency)}`;
-
-const pnlClass = (n: number | null) =>
-  n === null ? "" : n >= 0 ? styles.gain : styles.loss;
+const pnlTone = (n: number | null) =>
+  n === null ? "default" : n >= 0 ? "positive" : "negative";
 
 export default async function StocksPage() {
   const backendConnected = await getBackendConnected();
@@ -39,7 +35,7 @@ export default async function StocksPage() {
   }
 
   return (
-    <main className={`${styles.stocksRoot} ${styles.stocksMain}`}>
+    <main className={styles.stocksMain}>
       {!portfolio ? (
         <ConnectCard
           headline="Wealthsimple not connected"
@@ -57,61 +53,64 @@ export default async function StocksPage() {
       ) : (
         <>
           {portfolio.stale && (
-            <p className={styles.warningBanner} role="alert">
+            <Banner tone="warning">
               Wealthsimple is unreachable - showing data from{" "}
               {formatDayFromDate(new Date(portfolio.fetchedAt))}.
-            </p>
+            </Banner>
           )}
 
-          <section className={styles.statRow} aria-label="Portfolio summary">
-            <div className={styles.statTile}>
-              <span className={styles.statLabel}>Total value</span>
-              <span className={styles.statValue}>{money(portfolio.summary.totalValue)}</span>
-              <span className={styles.statHint}>
-                across {portfolio.accounts.length} account
-                {portfolio.accounts.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            <div className={styles.statTile}>
-              <span className={styles.statLabel}>Day P&amp;L</span>
-              <span className={`${styles.statValue} ${pnlClass(portfolio.summary.dayPnl)}`}>
-                {portfolio.summary.dayPnl === null ? "—" : signedMoney(portfolio.summary.dayPnl)}
-              </span>
-              <span className={styles.statHint}>1-day change</span>
-            </div>
-            <div className={styles.statTile}>
-              <span className={styles.statLabel}>All-time P&amp;L</span>
-              <span className={`${styles.statValue} ${pnlClass(portfolio.summary.totalPnl)}`}>
-                {portfolio.summary.totalPnl === null
+          <section className={styles.summaryGrid} aria-label="Portfolio summary">
+            <StatTile
+              label="Total value"
+              value={formatMoney(portfolio.summary.totalValue)}
+              hint={`across ${portfolio.accounts.length} account${portfolio.accounts.length === 1 ? "" : "s"}`}
+            />
+            <StatTile
+              label="Day P&L"
+              value={
+                portfolio.summary.dayPnl === null
                   ? "—"
-                  : signedMoney(portfolio.summary.totalPnl)}
-              </span>
-              <span className={styles.statHint}>
-                {portfolio.summary.totalPnlRate === null
+                  : formatMoney(portfolio.summary.dayPnl, "CAD", { signed: true })
+              }
+              hint="1-day change"
+              tone={pnlTone(portfolio.summary.dayPnl)}
+            />
+            <StatTile
+              label="All-time P&L"
+              value={
+                portfolio.summary.totalPnl === null
+                  ? "—"
+                  : formatMoney(portfolio.summary.totalPnl, "CAD", { signed: true })
+              }
+              hint={
+                portfolio.summary.totalPnlRate === null
                   ? ""
-                  : `${(portfolio.summary.totalPnlRate * 100).toFixed(1)}% simple return`}
-              </span>
-            </div>
+                  : `${(portfolio.summary.totalPnlRate * 100).toFixed(1)}% simple return`
+              }
+              tone={pnlTone(portfolio.summary.totalPnl)}
+            />
           </section>
 
           <section className={styles.accountsStrip} aria-label="Accounts">
             {portfolio.accounts.map((account) => (
-              <div key={account.id} className={styles.statTile}>
-                <span className={styles.statLabel}>{account.label}</span>
-                <span className={styles.statValue}>{money(account.value, account.currency)}</span>
-                <span className={styles.statHint}>{account.currency}</span>
-              </div>
+              <StatTile
+                key={account.id}
+                label={account.label}
+                value={formatMoney(account.value, account.currency)}
+                hint={account.currency}
+              />
             ))}
           </section>
 
           <div className={styles.chartsRow}>
-            <section className={`${styles.card} ${styles.donutCard}`} aria-label="Allocation">
-              <h2 className={styles.cardHeading}>Allocation</h2>
-              <AllocationDonut
-                positions={portfolio.positions.map((p) => ({ symbol: p.symbol, value: p.value }))}
-              />
+            <section className={styles.donutCard} aria-label="Allocation">
+              <Card as="div" title="Allocation">
+                <AllocationDonut
+                  positions={portfolio.positions.map((p) => ({ symbol: p.symbol, value: p.value }))}
+                />
+              </Card>
             </section>
-            <section className={`${styles.card} ${styles.donutCard}`} aria-label="Portfolio over time">
+            <section className={styles.donutCard} aria-label="Portfolio over time">
               <PortfolioChart series={history?.series ?? []} />
             </section>
           </div>
