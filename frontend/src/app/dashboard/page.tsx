@@ -1,24 +1,19 @@
-import { getBackendStatus } from "@/lib/api";
+import { PageHeader } from "@/app/components/ui";
+import { getBackendConnected } from "@/lib/dashboard-cache";
 import {
   getGoogleAccessToken,
   listGoogleEvents,
   type GoogleCalendarEvent,
 } from "@/lib/google-calendar";
 import { listTasks, type DashboardTask } from "@/lib/server-api";
-import DashboardTitleSection from "./DashboardTitleSection";
 import PortfolioTasksSection from "./PortfolioTasksSection";
 import ProjectUploadSection from "./ProjectUploadSection";
 import UpcomingEventsSection from "./UpcomingEventsSection";
 import styles from "./Dashboard.module.css";
+import shellStyles from "./_shell/Shell.module.css";
 
 export default async function DashboardPage() {
-  let backendConnected = false;
-  try {
-    const backendStatus = await getBackendStatus();
-    backendConnected = backendStatus === "connected";
-  } catch {
-    backendConnected = false;
-  }
+  const backendConnected = await getBackendConnected();
 
   let tasks: DashboardTask[] = [];
   if (backendConnected) {
@@ -39,18 +34,22 @@ export default async function DashboardPage() {
 
   return (
     <main className={styles.wrapper}>
-      <DashboardTitleSection backendConnected={backendConnected} />
+      <PageHeader title="Overview" />
 
       <div className={styles.contentGrid}>
-        <div className={styles.leftColumn}>
+        <div id="projects" className={`${styles.leftColumn} ${shellStyles.hashTarget}`}>
           <ProjectUploadSection />
         </div>
         <div className={styles.rightColumn}>
-          <PortfolioTasksSection tasks={tasks} backendConnected={backendConnected} />
-          <UpcomingEventsSection
-            googleEvents={googleEvents}
-            googleConnected={googleConnected}
-          />
+          <div id="tasks" className={shellStyles.hashTarget}>
+            <PortfolioTasksSection tasks={tasks} backendConnected={backendConnected} />
+          </div>
+          <div id="calendar" className={shellStyles.hashTarget}>
+            <UpcomingEventsSection
+              googleEvents={googleEvents}
+              googleConnected={googleConnected}
+            />
+          </div>
         </div>
       </div>
     </main>

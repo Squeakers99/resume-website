@@ -1,4 +1,5 @@
-import { getBackendStatus } from "@/lib/api";
+import { PageHeader } from "@/app/components/ui";
+import { getBackendConnected } from "@/lib/dashboard-cache";
 import {
   getBudgetInsights,
   getBudgetSummary,
@@ -9,7 +10,6 @@ import {
   type BudgetStatement,
   type BudgetSummary,
 } from "@/lib/server-api";
-import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import styles from "./Budgeting.module.css";
 import { formatDay } from "@/lib/formatDate";
@@ -22,12 +22,7 @@ const money = (n: number) =>
   n.toLocaleString("en-CA", { style: "currency", currency: "CAD" });
 
 export default async function BudgetingPage() {
-  let backendConnected = false;
-  try {
-    backendConnected = (await getBackendStatus()) === "connected";
-  } catch {
-    backendConnected = false;
-  }
+  const backendConnected = await getBackendConnected();
 
   let summary: BudgetSummary = {
     latestCard: null,
@@ -60,7 +55,7 @@ export default async function BudgetingPage() {
 
   return (
     <main className={dashStyles.wrapper}>
-      <DashboardTitleSection backendConnected={backendConnected} />
+      <PageHeader title="Budget" />
 
       {statements.some((s) => s.validationStatus === "mismatch") && (
         <p className={styles.warningBanner} role="alert">

@@ -1,0 +1,480 @@
+/* Dashboard shell: sidebar + top bar on desktop, bottom tab bar on phones.
+   Spacing and radii follow the shell and Phone artboards via the globals.css tokens. */
+
+.shell {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  color: var(--text-main);
+  font-size: var(--text-md);
+}
+
+/* ----- Sidebar ----- */
+.sidebar {
+  width: var(--shell-sidebar-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-3);
+  background: var(--card);
+  border-right: 1px solid var(--card-edge);
+  overflow: hidden;
+}
+
+.sidebarCollapsed {
+  width: var(--shell-sidebar-w-collapsed);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-1) var(--space-2);
+}
+
+.sidebarCollapsed .sidebarHeader {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebarBrand {
+  font-weight: 600;
+  font-size: var(--text-lg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarCollapsed .sidebarBrand {
+  display: none;
+}
+
+.iconButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-edge);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  color: var(--text-main);
+  background: var(--chip);
+}
+
+.iconButton:focus-visible,
+.navLink:focus-visible,
+.signOutButton:focus-visible,
+.tabItem:focus-visible,
+.moreLink:focus-visible,
+.breadcrumbLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navLink:hover {
+  background: var(--chip);
+}
+
+/* Label stays --text-main for 4.5:1 in every theme (--accent fails on --chip in
+   light); the accent shows as a 3px left bar instead. */
+.navLinkActive {
+  background: var(--chip);
+  color: var(--text-main);
+  font-weight: 500;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.sidebarCollapsed .navLink {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebarCollapsed .navLabel {
+  display: none;
+}
+
+.navIcon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+/* ----- Sidebar footer: theme + account (Main artboard) ----- */
+.sidebarFooter {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--card-edge);
+}
+
+.sidebarCollapsed .sidebarFooter {
+  align-items: center;
+}
+
+.sidebarTheme {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sidebarThemeLabel {
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Five themes in a 232px rail: tighten the shared toggle and swap the footer
+   palette for the dashboard tokens. */
+.sidebarTheme :global(.theme-toggle) {
+  border-color: var(--card-edge);
+}
+
+.sidebarTheme :global(.theme-btn) {
+  min-width: 0;
+  padding: 0.38rem 0;
+  color: var(--text-main);
+  font-size: 0.66rem;
+}
+
+.sidebarTheme :global(.theme-btn-active) {
+  color: var(--theme-active-text);
+}
+
+.sidebarFooter .userMenu {
+  justify-content: space-between;
+  padding: 0 var(--space-2);
+}
+
+.sidebarFooter .userEmail {
+  min-width: 0;
+}
+
+/* ----- Content column ----- */
+.contentColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ----- Top bar ----- */
+.topBar {
+  min-height: var(--shell-topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--card-edge);
+  background: var(--bg-0);
+}
+
+.topBarMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.breadcrumbs {
+  min-width: 0;
+}
+
+.breadcrumbList {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.breadcrumbLink {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.breadcrumbLink:hover {
+  color: var(--text-main);
+  text-decoration: underline;
+}
+
+.breadcrumbSeparator {
+  color: var(--text-muted);
+}
+
+.breadcrumbCurrent {
+  color: var(--text-main);
+}
+
+/* ----- Status pill ----- */
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--card-edge);
+  background: var(--chip);
+  font-size: var(--text-xs);
+  color: var(--text-main);
+  white-space: nowrap;
+}
+
+.statusDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--status-offline);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-offline) 35%, transparent);
+}
+
+.statusOnline .statusDot {
+  background: var(--status-online);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-online) 35%, transparent);
+}
+
+.statusOffline .statusDot {
+  background: var(--status-offline);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-offline) 35%, transparent);
+}
+
+/* ----- User menu ----- */
+.userMenu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.userEmail {
+  max-width: 220px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signOutButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--card-edge);
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.signOutButton:hover {
+  background: var(--chip);
+}
+
+/* ----- Bottom tab bar (phones only) ----- */
+.tabBar {
+  display: none;
+}
+
+.tabItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Same contrast rule as .navLinkActive: --text-main label, accent underline. */
+.tabItemActive {
+  background: var(--chip);
+  color: var(--text-main);
+  font-weight: 600;
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.tabIcon {
+  width: 22px;
+  height: 22px;
+}
+
+/* ----- More sheet ----- */
+.moreSheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.moreList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.moreLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  text-decoration: none;
+}
+
+.moreLink:hover {
+  background: var(--chip);
+}
+
+.moreSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--card-edge);
+}
+
+.moreSectionLabel {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Theme buttons in the sheet: 44px touch targets, dashboard tokens instead of
+   the site footer palette. */
+.moreSheet :global(.theme-toggle) {
+  border-color: var(--card-edge);
+}
+
+.moreSheet :global(.theme-btn) {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  color: var(--text-main);
+  font-size: var(--text-sm);
+}
+
+.moreSheet :global(.theme-btn-active) {
+  color: var(--theme-active-text);
+}
+
+/* Hash targets on the overview page clear the top bar when scrolled to. */
+.hashTarget {
+  scroll-margin-top: 80px;
+}
+
+.moreAccount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--card-edge);
+}
+
+.moreAccount .signOutButton {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+}
+
+/* ----- Phone: single column, no sidebar, tab bar fixed to the bottom ----- */
+@media (max-width: 639.98px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .topBar {
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-2);
+  }
+
+  .content {
+    padding: 0 0 calc(var(--shell-tabbar-h) + env(safe-area-inset-bottom));
+  }
+
+  .tabBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40; /* below the ui Modal overlay (50) so the More sheet covers it */
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: center;
+    height: calc(var(--shell-tabbar-h) + env(safe-area-inset-bottom));
+    padding: 0 var(--space-2) env(safe-area-inset-bottom);
+    border-top: 1px solid var(--card-edge);
+    background: var(--card);
+  }
+}

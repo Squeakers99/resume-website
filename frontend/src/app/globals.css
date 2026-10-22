@@ -28,6 +28,32 @@
   --status-online: #8de9b6;
   --status-offline: #ffb5b5;
   --theme-active-text: #091427;
+
+  /* Breakpoints (literals in modules, custom properties cannot drive media queries): 640px phone, 1024px desktop */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --shell-sidebar-w: 232px;
+  --shell-sidebar-w-collapsed: 64px;
+  --shell-topbar-h: 56px;
+  --shell-tabbar-h: 64px;
+  --gain: #8ec5ff;
+  --loss: #ffb37a;
+  --warning: #e5a50a;
 }
 
 [data-theme="forest"] {
@@ -100,6 +126,9 @@
   --status-online: #1f8a47;
   --status-offline: #b83f3f;
   --theme-active-text: #f7fbff;
+  --gain: #1f5fbf;
+  --loss: #a8530c;
+  --warning: #8a5a00;
 }
 
 [data-theme="solaris"] {
@@ -174,6 +203,10 @@ body *::after {
 .site-footer {
   width: 100%;
   padding: 0.5rem 0.75rem 0.75rem;
+}
+
+body:has([data-dashboard-shell]) .site-footer {
+  display: none;
 }
 
 .site-footer-inner {

@@ -1,0 +1,250 @@
+/* Interactive primitives: Modal, DataTable, Tabs.
+   Spacing, radius and type use the scale tokens in globals.css; the fallbacks
+   only matter before those tokens load. */
+
+/* ----- Modal ----- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5, 24px);
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  width: min(920px, 100%);
+  max-height: min(85vh, 900px);
+  overflow-y: auto;
+  padding: var(--space-4, 16px) var(--space-5, 24px);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--card);
+  color: var(--text-main);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+}
+
+.panel:focus {
+  outline: none;
+}
+
+/* Sheet variant: full-width panel pinned to the bottom edge (phone More sheet). */
+.overlaySheet {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.panelSheet {
+  width: 100%;
+  max-height: 85vh;
+  padding-bottom: calc(var(--space-4, 16px) + env(safe-area-inset-bottom));
+  border-bottom: none;
+  border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4, 16px);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-lg, 16px);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  min-width: 0;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2, 8px);
+}
+
+.closeButton {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 var(--space-3, 12px);
+  border: 1px solid var(--card-edge);
+  border-radius: var(--radius-sm, 8px);
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  font-size: var(--text-sm, 13px);
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  border-color: var(--accent);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ----- DataTable ----- */
+.tableWrap {
+  overflow: auto;
+  max-width: 100%;
+}
+
+.tableWrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* separate + zero spacing keeps header borders painted while the thead is sticky. */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-sm, 13px);
+}
+
+.caption {
+  caption-side: top;
+  padding: 0 0 var(--space-2, 8px);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-top: 1px solid var(--card-edge);
+  border-bottom: 1px solid var(--card-edge);
+  background: var(--bg-1);
+  color: var(--text-muted);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.td {
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-bottom: 1px solid color-mix(in srgb, var(--card-edge) 55%, transparent);
+  color: var(--text-main);
+  vertical-align: middle;
+}
+
+.alignRight {
+  text-align: right;
+}
+
+.numeric {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.emptyCell {
+  padding: var(--space-6, 32px) var(--space-4, 16px);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: var(--text-main);
+}
+
+.sortButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 8px);
+}
+
+.sortIcon {
+  font-size: 0.7em;
+  opacity: 0.55;
+}
+
+.th[aria-sort="ascending"] .sortIcon,
+.th[aria-sort="descending"] .sortIcon {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* ----- Tabs ----- */
+/* The baseline is an inset shadow rather than a border so the active tab's
+   underline can sit on it inside the horizontal scroll box. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  box-shadow: inset 0 -1px 0 var(--card-edge);
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 0 0 auto;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm, 13px);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--text-main);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm, 8px);
+}
+
+.tab[aria-current="page"] {
+  border-bottom-color: var(--accent);
+  color: var(--text-main);
+  font-weight: 600;
+}

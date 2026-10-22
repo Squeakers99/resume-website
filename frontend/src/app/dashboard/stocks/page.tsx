@@ -1,4 +1,5 @@
-import { getBackendStatus } from "@/lib/api";
+import { PageHeader } from "@/app/components/ui";
+import { getBackendConnected } from "@/lib/dashboard-cache";
 import {
   getStocksHistory,
   getStocksPortfolio,
@@ -7,7 +8,6 @@ import {
   type StocksPortfolio,
   type StocksStatus,
 } from "@/lib/server-api";
-import DashboardTitleSection from "../DashboardTitleSection";
 import dashStyles from "../Dashboard.module.css";
 import AllocationDonut from "./AllocationDonut";
 import { formatDayFromDate } from "@/lib/formatDate";
@@ -26,12 +26,7 @@ const pnlClass = (n: number | null) =>
   n === null ? "" : n >= 0 ? styles.gain : styles.loss;
 
 export default async function StocksPage() {
-  let backendConnected = false;
-  try {
-    backendConnected = (await getBackendStatus()) === "connected";
-  } catch {
-    backendConnected = false;
-  }
+  const backendConnected = await getBackendConnected();
 
   let status: StocksStatus = "disconnected";
   let portfolio: StocksPortfolio | null = null;
@@ -52,7 +47,7 @@ export default async function StocksPage() {
 
   return (
     <main className={`${dashStyles.wrapper} ${styles.stocksRoot}`}>
-      <DashboardTitleSection backendConnected={backendConnected} />
+      <PageHeader title="Stocks" />
 
       {!portfolio ? (
         <ConnectCard

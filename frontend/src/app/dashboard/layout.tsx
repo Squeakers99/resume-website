@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
-import { getOwnerSession } from "@/lib/auth";
+import { getOwnerSession, signOut } from "@/lib/auth";
+import { getBackendConnected } from "@/lib/dashboard-cache";
+import DashboardShell from "./_shell/DashboardShell";
 
 export default async function DashboardLayout({
   children,
@@ -9,5 +11,20 @@ export default async function DashboardLayout({
   const session = await getOwnerSession();
   if (!session) redirect("/login");
 
-  return children;
+  const backendConnected = await getBackendConnected();
+
+  async function signOutAction() {
+    "use server";
+    await signOut({ redirectTo: "/" });
+  }
+
+  return (
+    <DashboardShell
+      email={session.user?.email ?? "Unknown"}
+      backendConnected={backendConnected}
+      signOutAction={signOutAction}
+    >
+      {children}
+    </DashboardShell>
+  );
 }
